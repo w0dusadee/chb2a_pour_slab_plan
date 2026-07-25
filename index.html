@@ -177,11 +177,11 @@
   .num-overlay{
     position:absolute;
     background:var(--white);
-    border:2.4px solid var(--red);
+    border:1.6px solid var(--red);
     border-radius:2px;
     display:flex; align-items:center; justify-content:center;
     font-family:'IBM Plex Mono',monospace;
-    font-weight:900;
+    font-weight:700;
     color:var(--ink);
     pointer-events:none;
     z-index:2;
@@ -199,6 +199,22 @@
     line-height:1;
     white-space:nowrap;
   }
+  /* Area label written into the empty space of each panel cell (above the
+     sequence-number box). No background box since it isn't covering any
+     printed text -- it's new information placed in blank space. */
+  .area-overlay{
+    position:absolute;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    color:var(--navy-2);
+    pointer-events:none;
+    z-index:2;
+    line-height:1.15;
+    white-space:nowrap;
+    text-shadow:0 0 3px var(--paper), 0 0 3px var(--paper), 0 0 5px var(--paper);
+  }
+  .area-overlay sup{ font-size:.7em; }
 
   /* Modal */
   .overlay{
@@ -219,7 +235,16 @@
   }
   .modal-head h2{ margin:0 0 4px; font-size:17px; }
   .modal-head-actions{
-    display:flex; align-items:flex-start; gap:10px; flex-shrink:0;
+    display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;
+  }
+  .modal-head-actions-row{
+    display:flex; align-items:flex-start; gap:10px;
+  }
+  .area-volume-info{
+    text-align:right; line-height:1.35;
+  }
+  .area-volume-info p{
+    margin:0; font-size:12px; color:var(--muted);
   }
   .modal-head button{
     background:none; border:none; font-size:20px; cursor:pointer;
@@ -290,7 +315,6 @@
       </div>
     </div>
     <div class="legend">
-      <span class="row"><span class="swatch" style="background:#b7e0b0"></span>On schedule / ahead</span>
       <span class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;5 overdue</span>
       <span class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 6) overdue</span>
       <span class="row"><span class="swatch" style="background:#c7cbd1"></span>All 6 steps complete</span>
@@ -318,8 +342,14 @@
         <p class="rank-line" id="rankLine"></p>
       </div>
       <div class="modal-head-actions">
-        <button id="clearAllBtn" class="clear-all-btn">Clear All</button>
-        <button id="closeBtn" aria-label="Close">&times;</button>
+        <div class="area-volume-info" id="areaVolumeInfo">
+          <p id="modalVolumeLine">Volume &mdash;</p>
+          <p id="modalAreaLine">Area &mdash;</p>
+        </div>
+        <div class="modal-head-actions-row">
+          <button id="clearAllBtn" class="clear-all-btn">Clear All</button>
+          <button id="closeBtn" aria-label="Close">&times;</button>
+        </div>
       </div>
     </div>
 
@@ -392,6 +422,18 @@ const panels = [
   {num:43, date:'14/12', l:87.574, t:71.979, w:10.498, h:19.152, nl:91.269, nt:78.021, nw:2.785, nh:6.298, dl:91.002, dt:84.576, dw:3.267, dh:2.571},
 ];
 
+// Panel floor areas (sq.m.), taken from drawing S-DCH-2200-2.0 (Ground Floor
+// General Arrangement). Each panel's cell inherits the printed area of the
+// column it sits in (columns run FSA / narrow strip / narrow strip / then
+// alternating DCH bay widths repeating 4x across the building).
+const AREA_BY_NUM = {
+  16:593.93, 2:264.00, 5:291.68, 8:695.96, 11:789.36, 21:695.96, 26:789.36, 30:695.96, 34:789.36, 38:695.97, 42:789.36,
+  24:593.93, 19:264.00, 17:291.68, 15:695.96, 13:789.36, 23:695.96, 28:789.36, 32:695.96, 36:789.36, 40:695.96, 44:789.36,
+  18:593.93, 1:264.00, 4:291.68, 7:695.96, 10:789.36, 20:695.96, 25:789.36, 29:695.96, 33:789.36, 37:695.96, 41:789.36,
+  14:548.32, 3:264.00, 6:291.68, 9:695.96, 12:789.36, 22:695.96, 27:789.36, 31:695.96, 35:789.36, 39:695.96, 43:789.36,
+};
+panels.forEach(p => { p.area = AREA_BY_NUM[p.num]; });
+
 // Order per latest instruction: Lean -> Formwork & Damp Proof -> Lower Rebar
 // -> Grounding (M&E) -> Upper Rebar -> Concrete Pour. Offsets are sequential
 // days counting back from the pour date (keys unchanged so old saved
@@ -431,6 +473,14 @@ function parseDDMM(str, year){
   return new Date(year, m-1, d);
 }
 function fmtDDMM(date){ return date.getDate() + '/' + (date.getMonth()+1); }
+function formatArea(n){ return n.toFixed(2); }
+// Label shown on the panel drawing itself: rounded UP to a whole number,
+// with the "2" in "m.2" rendered as a superscript. Kept separate from
+// formatArea() above, which still feeds the two-decimal "sq.m." / "cu.m."
+// lines in the modal.
+function formatAreaLabelHTML(n){
+  return Math.ceil(n) + ' m.<sup>2</sup>';
+}
 function fmtDDMMYYYY(date){
   const dd = String(date.getDate()).padStart(2,'0');
   const mm = String(date.getMonth()+1).padStart(2,'0');
@@ -463,7 +513,7 @@ function panelProgress(num){
   return done;
 }
 
-// Returns 'done' | 'red' | 'orange' | 'green' | 'normal'
+// Returns 'done' | 'red' | 'orange' | 'normal'
 function panelStatus(p){
   const rec = store[p.num] || {};
   const doneCount = panelProgress(p.num);
@@ -479,8 +529,6 @@ function panelStatus(p){
     if(!rec[s.key] && refDate > d) prepOverdue = true;
   });
   if(prepOverdue) return 'orange';
-
-  if(doneCount > 0) return 'green';
 
   return 'normal';
 }
@@ -509,15 +557,10 @@ function getRank(num){
   return idx === -1 ? null : idx + 1;
 }
 
-// Sequence-number box/font: shrunk to 90% of original (-10%).
-const NUM_BOX_SCALE = 0.90;
-// Pour-date text: grown to 110% of original (+10%).
-const DATE_FONT_SCALE = 1.10;
-
 function renderPlan(){
   recomputeRanks();
   const wrap = document.getElementById('planWrap');
-  wrap.querySelectorAll('.hit, .num-overlay, .date-overlay').forEach(el => el.remove());
+  wrap.querySelectorAll('.hit, .num-overlay, .date-overlay, .area-overlay').forEach(el => el.remove());
 
   // Measure the container once per render (not once per overlay -- that was
   // forcing a layout reflow for every single number/date, 88+ times over).
@@ -557,24 +600,18 @@ function renderPlan(){
     wrap.appendChild(hit);
 
     // Live overlay that replaces the printed sequence number
-    // Box and digits are shrunk 10% (NUM_BOX_SCALE), staying centered over
-    // the original printed box instead of shifting toward a corner.
     const numEl = document.createElement('div');
     numEl.className = 'num-overlay';
     numEl.id = 'num-' + p.num;
-    const numW = p.nw * NUM_BOX_SCALE;
-    const numH = p.nh * NUM_BOX_SCALE;
-    numEl.style.left = (p.nl + (p.nw - numW) / 2) + '%';
-    numEl.style.top = (p.nt + (p.nh - numH) / 2) + '%';
-    numEl.style.width = numW + '%';
-    numEl.style.height = numH + '%';
-    numEl.style.fontSize = boxFontPx(wrapRect, numW, numH, 0.46 * NUM_BOX_SCALE, 7);
+    numEl.style.left = p.nl + '%';
+    numEl.style.top = p.nt + '%';
+    numEl.style.width = p.nw + '%';
+    numEl.style.height = p.nh + '%';
+    numEl.style.fontSize = boxFontPx(wrapRect, p.nw, p.nh, 0.46, 7);
     numEl.textContent = getRank(p.num);
     wrap.appendChild(numEl);
 
     // Live overlay that replaces the printed pour-date text
-    // Font size bumped 10% (DATE_FONT_SCALE) while the box footprint (and
-    // therefore the badge, which mirrors it) stays the same.
     const dateEl = document.createElement('div');
     dateEl.className = 'date-overlay';
     dateEl.id = 'date-' + p.num;
@@ -582,9 +619,27 @@ function renderPlan(){
     dateEl.style.top = p.dt + '%';
     dateEl.style.width = p.dw + '%';
     dateEl.style.height = p.dh + '%';
-    dateEl.style.fontSize = boxFontPx(wrapRect, p.dw, p.dh, 0.62 * DATE_FONT_SCALE, 7);
+    dateEl.style.fontSize = boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7);
     dateEl.textContent = fmtDDMM(effectivePourDate(p));
     wrap.appendChild(dateEl);
+
+    // Area label -- placed in whichever blank band of the panel cell is
+    // actually free (top strip, the gap between the number and date boxes,
+    // or the bottom strip), so it never overlaps the num-overlay or
+    // date-overlay. Font size matches the pour-date text.
+    if(p.area != null){
+      const band = findAreaBand(p);
+      const areaEl = document.createElement('div');
+      areaEl.className = 'area-overlay';
+      areaEl.id = 'area-' + p.num;
+      areaEl.style.left = p.l + '%';
+      areaEl.style.top = band.top + '%';
+      areaEl.style.width = p.w + '%';
+      areaEl.style.height = band.height + '%';
+      areaEl.style.fontSize = boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7);
+      areaEl.innerHTML = formatAreaLabelHTML(p.area);
+      wrap.appendChild(areaEl);
+    }
   });
   updateTotal();
 }
@@ -598,8 +653,41 @@ function boxFontPx(wrapRect, wPct, hPct, factor, minPx){
   return Math.max(minPx, boxPx * factor) + 'px';
 }
 
+// Finds an open vertical band (full panel width) inside panel p that does
+// not overlap the num-overlay or date-overlay boxes, so the area label can
+// be dropped into whatever blank space the panel actually has instead of
+// always assuming the top strip is free (some rows have their number box
+// positioned high enough that the old fixed top strip ran straight through
+// it). Falls back to the top strip if, for some reason, nothing else fits.
+function findAreaBand(p){
+  const margin = 0.35; // gap kept clear around neighboring boxes, in % units
+  const panelTop = p.t, panelBottom = p.t + p.h;
+
+  const boxes = [
+    { top: p.nt, bottom: p.nt + p.nh },
+    { top: p.dt, bottom: p.dt + p.dh }
+  ].sort((a, b) => a.top - b.top);
+
+  const candidates = [
+    { top: panelTop, bottom: boxes[0].top - margin },
+    { top: boxes[0].bottom + margin, bottom: boxes[1].top - margin },
+    { top: Math.max(boxes[0].bottom, boxes[1].bottom) + margin, bottom: panelBottom }
+  ].map(b => ({ top: b.top, bottom: b.bottom, height: b.bottom - b.top }))
+   .filter(b => b.height > 1.5); // ignore slivers too small to hold text
+
+  if(candidates.length === 0){
+    // Nothing cleanly free -- fall back to the old top-strip behavior.
+    return { top: panelTop, height: p.h * 0.32 };
+  }
+
+  candidates.sort((a, b) => b.height - a.height);
+  const best = candidates[0];
+  const height = Math.min(best.height, p.h * 0.32 || best.height);
+  return { top: best.top, height };
+}
+
 function applyStatusColor(hit, status){
-  const colors = { orange:'#f0b878', red:'#d1483a', done:'#c7cbd1', green:'#b7e0b0' };
+  const colors = { orange:'#f0b878', red:'#d1483a', done:'#c7cbd1' };
   hit.style.background = colors[status] || 'transparent';
 }
 
@@ -642,6 +730,16 @@ function openModal(num){
     'Main pour date: ' + fmtDDMM(pourDate) + '/' + pourDate.getFullYear();
   document.getElementById('rankLine').textContent =
     'Pour sequence: #' + getRank(num) + ' of ' + panels.length;
+
+  if(p.area != null){
+    document.getElementById('modalVolumeLine').textContent =
+      'Volume ' + formatArea(p.area * 0.30) + ' cu.m.';
+    document.getElementById('modalAreaLine').textContent =
+      'Area ' + formatArea(p.area) + ' sq.m.';
+  } else {
+    document.getElementById('modalVolumeLine').textContent = 'Volume \u2014';
+    document.getElementById('modalAreaLine').textContent = 'Area \u2014';
+  }
 
   renderTimeline(p, pourDate, rec);
 
@@ -688,28 +786,12 @@ function renderTimeline(p, pourDate, rec){
     cb.addEventListener('change', () => {
       if(!store[p.num]) store[p.num] = {};
       store[p.num][stage.key] = cb.checked;
-
-      // If the final "Concrete Pour" stage is being checked, auto-check
-      // every prior stage too -- pouring implies all prep steps are done.
-      const isLastStage = STAGES.indexOf(stage) === STAGES.length - 1;
-      const autoChecked = isLastStage && cb.checked;
-      if(autoChecked){
-        STAGES.slice(0, -1).forEach(s => { store[p.num][s.key] = true; });
-      }
-
       saveStore(store);
       refreshPanelVisual(p.num);
       updateTotal();
-
-      if(autoChecked){
-        // Re-render the whole timeline so every checkbox/date reflects
-        // the auto-checked prior stages.
-        renderTimeline(p, pourDate, store[p.num]);
-      } else {
-        const stillOverdue = !cb.checked && refDate > d;
-        dt.classList.toggle('overdue', stillOverdue);
-        dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (stillOverdue ? '  (overdue)' : '');
-      }
+      const stillOverdue = !cb.checked && refDate > d;
+      dt.classList.toggle('overdue', stillOverdue);
+      dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (stillOverdue ? '  (overdue)' : '');
     });
 
     textWrap.appendChild(lbl);
