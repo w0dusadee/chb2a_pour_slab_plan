@@ -290,6 +290,7 @@
       </div>
     </div>
     <div class="legend">
+      <span class="row"><span class="swatch" style="background:#b7e0b0"></span>On schedule / ahead</span>
       <span class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;5 overdue</span>
       <span class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 6) overdue</span>
       <span class="row"><span class="swatch" style="background:#c7cbd1"></span>All 6 steps complete</span>
@@ -462,7 +463,7 @@ function panelProgress(num){
   return done;
 }
 
-// Returns 'done' | 'red' | 'orange' | 'normal'
+// Returns 'done' | 'red' | 'orange' | 'green' | 'normal'
 function panelStatus(p){
   const rec = store[p.num] || {};
   const doneCount = panelProgress(p.num);
@@ -478,6 +479,8 @@ function panelStatus(p){
     if(!rec[s.key] && refDate > d) prepOverdue = true;
   });
   if(prepOverdue) return 'orange';
+
+  if(doneCount > 0) return 'green';
 
   return 'normal';
 }
@@ -596,7 +599,7 @@ function boxFontPx(wrapRect, wPct, hPct, factor, minPx){
 }
 
 function applyStatusColor(hit, status){
-  const colors = { orange:'#f0b878', red:'#d1483a', done:'#c7cbd1' };
+  const colors = { orange:'#f0b878', red:'#d1483a', done:'#c7cbd1', green:'#b7e0b0' };
   hit.style.background = colors[status] || 'transparent';
 }
 
@@ -685,12 +688,28 @@ function renderTimeline(p, pourDate, rec){
     cb.addEventListener('change', () => {
       if(!store[p.num]) store[p.num] = {};
       store[p.num][stage.key] = cb.checked;
+
+      // If the final "Concrete Pour" stage is being checked, auto-check
+      // every prior stage too -- pouring implies all prep steps are done.
+      const isLastStage = STAGES.indexOf(stage) === STAGES.length - 1;
+      const autoChecked = isLastStage && cb.checked;
+      if(autoChecked){
+        STAGES.slice(0, -1).forEach(s => { store[p.num][s.key] = true; });
+      }
+
       saveStore(store);
       refreshPanelVisual(p.num);
       updateTotal();
-      const stillOverdue = !cb.checked && refDate > d;
-      dt.classList.toggle('overdue', stillOverdue);
-      dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (stillOverdue ? '  (overdue)' : '');
+
+      if(autoChecked){
+        // Re-render the whole timeline so every checkbox/date reflects
+        // the auto-checked prior stages.
+        renderTimeline(p, pourDate, store[p.num]);
+      } else {
+        const stillOverdue = !cb.checked && refDate > d;
+        dt.classList.toggle('overdue', stillOverdue);
+        dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (stillOverdue ? '  (overdue)' : '');
+      }
     });
 
     textWrap.appendChild(lbl);
