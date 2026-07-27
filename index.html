@@ -121,6 +121,10 @@
     font-size:11px; color:#f5e07a;
     background:rgba(0,0,0,.2); padding:5px 11px; border-radius:4px;
     border:1px solid rgba(255,255,255,.12);
+    display:flex; flex-direction:column; align-items:flex-end; gap:2px;
+  }
+  .progress-total .volume-line{
+    color:#b9e0a8;
   }
 
   .stage{
@@ -321,7 +325,10 @@
       <span class="row"><span class="swatch" style="background:#c7cbd1"></span>All 6 steps complete</span>
       <span class="row">Click any panel to view details</span>
     </div>
-    <div class="progress-total" id="progressTotal">Total progress: 0 / 264 tasks</div>
+    <div class="progress-total" id="progressTotal">
+      <span class="tasks-line">Total progress: 0 / 264 tasks</span>
+      <span class="volume-line" id="progressVolume">0.00 / 0.00 cu.m.</span>
+    </div>
   </div>
 </header>
 
@@ -720,10 +727,27 @@ function applyStatusColor(hit, status){
 
 function updateTotal(){
   let total = 0;
-  panels.forEach(p => { total += panelProgress(p.num); });
+  let pouredVolume = 0;
+  let totalVolume = 0;
+  const pourKey = STAGES[STAGES.length - 1].key;
+  panels.forEach(p => {
+    total += panelProgress(p.num);
+    if(p.area != null){
+      const vol = p.area * 0.30;
+      totalVolume += vol;
+      const rec = store[p.num] || {};
+      if(rec[pourKey]) pouredVolume += vol;
+    }
+  });
   const totalTasks = panels.length * STAGES.length;
-  document.getElementById('progressTotal').textContent =
-    'Total progress: ' + total + ' / ' + totalTasks + ' tasks';
+  const tasksEl = document.querySelector('#progressTotal .tasks-line');
+  if(tasksEl){
+    tasksEl.textContent = 'Total progress: ' + total + ' / ' + totalTasks + ' tasks';
+  }
+  const volEl = document.getElementById('progressVolume');
+  if(volEl){
+    volEl.textContent = formatArea(pouredVolume) + ' / ' + formatArea(totalVolume) + ' cu.m.';
+  }
 }
 
 function refreshPanelVisual(num){
