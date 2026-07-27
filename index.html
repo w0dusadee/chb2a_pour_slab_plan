@@ -295,6 +295,29 @@
   .step label.chk{ display:flex; align-items:center; gap:6px; cursor:pointer; }
   .step input[type=checkbox]{ width:16px; height:16px; accent-color:#5b7cc0; cursor:pointer; }
   .modal-foot{ padding:0 22px 20px; font-size:11px; color:var(--muted); }
+
+  /* Password gate for editing */
+  .pw-overlay{ z-index:500; }
+  .pw-modal{ max-width:280px; border-top-color:var(--navy); }
+  .pw-body{ padding:2px 22px 22px; }
+  .pw-body p.hint{ margin:0 0 12px; font-size:12px; color:var(--muted); }
+  .pw-input{
+    width:100%; padding:9px 10px; font-size:14px;
+    font-family:'IBM Plex Mono',monospace;
+    border:1px solid var(--paper-line); border-radius:4px;
+    background:var(--white); color:var(--ink);
+  }
+  .pw-input:focus{ outline:2px solid var(--blue-deep); outline-offset:1px; }
+  .pw-error{
+    color:#d1483a; font-size:11px; margin:8px 0 0; display:none;
+  }
+  .pw-error.show{ display:block; }
+  .pw-submit{
+    margin-top:14px; width:100%; padding:9px; border:none; border-radius:4px;
+    background:var(--navy); color:#f5e07a; font-weight:600; font-size:13px;
+    font-family:'IBM Plex Mono',monospace; cursor:pointer;
+  }
+  .pw-submit:hover{ background:var(--navy-2); }
 </style>
 </head>
 <body>
@@ -372,6 +395,25 @@
 
     <div class="timeline" id="timeline"></div>
     <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<div class="overlay pw-overlay" id="pwOverlay">
+  <div class="modal pw-modal">
+    <div class="modal-head" style="border-bottom:none; padding-bottom:4px;">
+      <div><h2 style="font-size:15px;">Password required</h2></div>
+      <div class="modal-head-actions">
+        <div class="modal-head-actions-row">
+          <button id="pwCancelBtn" aria-label="Cancel">&times;</button>
+        </div>
+      </div>
+    </div>
+    <div class="pw-body">
+      <p class="hint">Enter the password to edit this task.</p>
+      <input type="password" id="pwInput" class="pw-input" autocomplete="off" />
+      <p class="pw-error" id="pwError">Incorrect password.</p>
+      <button class="pw-submit" id="pwSubmitBtn">Unlock</button>
+    </div>
   </div>
 </div>
 
@@ -469,6 +511,53 @@ function loadOverrides(){
 }
 function saveOverrides(o){ localStorage.setItem(OVR_KEY, JSON.stringify(o)); }
 let overrides = loadOverrides();
+
+/* ===================== Edit password gate ===================== */
+// Once entered correctly, editing stays unlocked for the rest of this
+// browser session so many panels/tasks can be edited quickly in a row.
+const EDIT_PASSWORD = '.';
+let editingUnlocked = false;
+let pendingUnlockCallback = null;
+
+function requestUnlock(callback){
+  if(editingUnlocked){ callback(); return; }
+  pendingUnlockCallback = callback;
+  const err = document.getElementById('pwError');
+  const input = document.getElementById('pwInput');
+  err.classList.remove('show');
+  input.value = '';
+  document.getElementById('pwOverlay').classList.add('open');
+  setTimeout(() => input.focus(), 50);
+}
+
+function closePwOverlay(){
+  document.getElementById('pwOverlay').classList.remove('open');
+  pendingUnlockCallback = null;
+}
+
+function submitPw(){
+  const input = document.getElementById('pwInput');
+  if(input.value === EDIT_PASSWORD){
+    editingUnlocked = true;
+    const cb = pendingUnlockCallback;
+    pendingUnlockCallback = null;
+    document.getElementById('pwOverlay').classList.remove('open');
+    if(cb) cb();
+  } else {
+    document.getElementById('pwError').classList.add('show');
+    input.value = '';
+    input.focus();
+  }
+}
+
+document.getElementById('pwSubmitBtn').addEventListener('click', submitPw);
+document.getElementById('pwInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); submitPw(); }
+});
+document.getElementById('pwCancelBtn').addEventListener('click', closePwOverlay);
+document.getElementById('pwOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'pwOverlay') closePwOverlay();
+});
 
 // Reference "today" used for overdue checks -- adjustable via the calendar picker.
 let refDate = new Date();
@@ -834,7 +923,7 @@ function renderTimeline(p, pourDate, rec){
     dt.className = 'date' + (isOverdue ? ' overdue' : '');
     dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (isOverdue ? '  (overdue)' : '');
 
-    cb.addEventListener('change', () => {
+    function applyStageChange(){
       if(!store[p.num]) store[p.num] = {};
 
       // Checking off the final "Concrete Pour" step means every prep step
@@ -857,6 +946,22 @@ function renderTimeline(p, pourDate, rec){
       const stillOverdue = !cb.checked && refDate > d;
       dt.classList.toggle('overdue', stillOverdue);
       dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (stillOverdue ? '  (overdue)' : '');
+    }
+
+    // Require the edit password before the checkbox is allowed to toggle.
+    // Once unlocked (for the rest of the session) clicks pass straight
+    // through and the 'change' listener below saves as normal.
+    cb.addEventListener('click', (e) => {
+      if(!editingUnlocked){
+        e.preventDefault();
+        requestUnlock(() => {
+          cb.checked = !cb.checked;
+          applyStageChange();
+        });
+      }
+    });
+    cb.addEventListener('change', () => {
+      if(editingUnlocked) applyStageChange();
     });
 
     textWrap.appendChild(lbl);
@@ -880,37 +985,41 @@ document.addEventListener('keydown', (e) => {
     document.getElementById('overlay').classList.remove('open');
     document.getElementById('calPop').classList.remove('open');
     document.getElementById('editCalPop').style.display = 'none';
+    closePwOverlay();
   }
 });
 
 let clearConfirmTimer = null;
 document.getElementById('clearAllBtn').addEventListener('click', () => {
   if(currentModalPanel === null) return;
-  const btn = document.getElementById('clearAllBtn');
+  const doClearStep = () => {
+    const btn = document.getElementById('clearAllBtn');
 
-  if(!btn.classList.contains('confirming')){
-    btn.classList.add('confirming');
-    btn.textContent = 'Click again to confirm';
-    clearConfirmTimer = setTimeout(() => {
-      btn.classList.remove('confirming');
-      btn.textContent = 'Clear All';
-    }, 3000);
-    return;
-  }
+    if(!btn.classList.contains('confirming')){
+      btn.classList.add('confirming');
+      btn.textContent = 'Click again to confirm';
+      clearConfirmTimer = setTimeout(() => {
+        btn.classList.remove('confirming');
+        btn.textContent = 'Clear All';
+      }, 3000);
+      return;
+    }
 
-  clearTimeout(clearConfirmTimer);
-  btn.classList.remove('confirming');
-  btn.textContent = 'Clear All';
+    clearTimeout(clearConfirmTimer);
+    btn.classList.remove('confirming');
+    btn.textContent = 'Clear All';
 
-  store[currentModalPanel] = {};
-  saveStore(store);
+    store[currentModalPanel] = {};
+    saveStore(store);
 
-  const p = panels.find(pp => pp.num === currentModalPanel);
-  const pourDate = effectivePourDate(p);
-  renderTimeline(p, pourDate, {});
+    const p = panels.find(pp => pp.num === currentModalPanel);
+    const pourDate = effectivePourDate(p);
+    renderTimeline(p, pourDate, {});
 
-  refreshPanelVisual(currentModalPanel);
-  updateTotal();
+    refreshPanelVisual(currentModalPanel);
+    updateTotal();
+  };
+  if(!editingUnlocked){ requestUnlock(doClearStep); } else { doClearStep(); }
 });
 
 /* ===================== Reference-date calendar picker ===================== */
@@ -1036,13 +1145,16 @@ function renderEditCalendar(){
 document.getElementById('editDateBtn').addEventListener('click', (e) => {
   e.stopPropagation();
   if(currentModalPanel === null) return;
-  const p = panels.find(pp => pp.num === currentModalPanel);
-  const currentDate = effectivePourDate(p);
-  editCalYear = currentDate.getFullYear();
-  editCalMonth = currentDate.getMonth();
-  renderEditCalendar();
-  const pop = document.getElementById('editCalPop');
-  pop.style.display = (pop.style.display === 'none') ? 'block' : 'none';
+  const doOpen = () => {
+    const p = panels.find(pp => pp.num === currentModalPanel);
+    const currentDate = effectivePourDate(p);
+    editCalYear = currentDate.getFullYear();
+    editCalMonth = currentDate.getMonth();
+    renderEditCalendar();
+    const pop = document.getElementById('editCalPop');
+    pop.style.display = (pop.style.display === 'none') ? 'block' : 'none';
+  };
+  if(!editingUnlocked){ requestUnlock(doOpen); } else { doOpen(); }
 });
 document.getElementById('editCalPrev').addEventListener('click', (e) => {
   e.stopPropagation();
