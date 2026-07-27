@@ -315,6 +315,7 @@
       </div>
     </div>
     <div class="legend">
+      <span class="row"><span class="swatch" style="background:#b9e0a8"></span>Steps on/ahead of schedule</span>
       <span class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;5 overdue</span>
       <span class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 6) overdue</span>
       <span class="row"><span class="swatch" style="background:#c7cbd1"></span>All 6 steps complete</span>
@@ -530,6 +531,16 @@ function panelStatus(p){
   });
   if(prepOverdue) return 'orange';
 
+  // Highlight light green as soon as any single step has been checked off
+  // on-time or ahead of its own scheduled date (and nothing else is overdue).
+  let aheadOfSchedule = false;
+  STAGES.forEach(s => {
+    if(!rec[s.key]) return;
+    const d = new Date(pourDate); d.setDate(d.getDate() + s.offset);
+    if(refDate <= d) aheadOfSchedule = true;
+  });
+  if(aheadOfSchedule) return 'green';
+
   return 'normal';
 }
 
@@ -703,7 +714,7 @@ function findAreaBand(p, wrapRect){
 }
 
 function applyStatusColor(hit, status){
-  const colors = { orange:'#f0b878', red:'#d1483a', done:'#c7cbd1' };
+  const colors = { orange:'#f0b878', red:'#d1483a', done:'#c7cbd1', green:'#b9e0a8' };
   hit.style.background = colors[status] || 'transparent';
 }
 
@@ -801,6 +812,20 @@ function renderTimeline(p, pourDate, rec){
 
     cb.addEventListener('change', () => {
       if(!store[p.num]) store[p.num] = {};
+
+      // Checking off the final "Concrete Pour" step means every prep step
+      // must already be done in practice, so auto-complete the whole
+      // timeline and re-render it (fully "done" -> normal grey, not green).
+      const isPourStage = (stage === STAGES[STAGES.length - 1]);
+      if(isPourStage && cb.checked){
+        STAGES.forEach(s => { store[p.num][s.key] = true; });
+        saveStore(store);
+        refreshPanelVisual(p.num);
+        updateTotal();
+        renderTimeline(p, pourDate, store[p.num]);
+        return;
+      }
+
       store[p.num][stage.key] = cb.checked;
       saveStore(store);
       refreshPanelVisual(p.num);
