@@ -628,7 +628,7 @@ function renderPlan(){
     // or the bottom strip), so it never overlaps the num-overlay or
     // date-overlay. Font size matches the pour-date text.
     if(p.area != null){
-      const band = findAreaBand(p);
+      const band = findAreaBand(p, wrapRect);
       const areaEl = document.createElement('div');
       areaEl.className = 'area-overlay';
       areaEl.id = 'area-' + p.num;
@@ -659,7 +659,7 @@ function boxFontPx(wrapRect, wPct, hPct, factor, minPx){
 // always assuming the top strip is free (some rows have their number box
 // positioned high enough that the old fixed top strip ran straight through
 // it). Falls back to the top strip if, for some reason, nothing else fits.
-function findAreaBand(p){
+function findAreaBand(p, wrapRect){
   const margin = 0.35; // gap kept clear around neighboring boxes, in % units
   const panelTop = p.t, panelBottom = p.t + p.h;
 
@@ -681,7 +681,23 @@ function findAreaBand(p){
   }
 
   candidates.sort((a, b) => b.height - a.height);
-  const best = candidates[0];
+  let best = candidates[0];
+
+  // If the chosen band starts right at the panel's top edge, it collides
+  // with the small round "done count" badge pinned to the panel's top
+  // corner (see .badge). Push the band down by roughly the badge's
+  // rendered height so the area label clears it, without eating into the
+  // margin already reserved above the number/date box.
+  if(Math.abs(best.top - panelTop) < 0.01 && wrapRect && wrapRect.height){
+    const badgeClearancePx = 21; // ~badge height + its 2px top offset
+    const clearancePct = (badgeClearancePx / wrapRect.height) * 100;
+    const minHeight = 2; // keep at least this much band height
+    const shiftedTop = Math.min(best.top + clearancePct, best.bottom - minHeight);
+    if(shiftedTop > best.top){
+      best = { top: shiftedTop, bottom: best.bottom, height: best.bottom - shiftedTop };
+    }
+  }
+
   const height = Math.min(best.height, p.h * 0.32 || best.height);
   return { top: best.top, height };
 }
