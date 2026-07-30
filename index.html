@@ -971,10 +971,20 @@ function renderTimeline(p, pourDate, rec){
       dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (stillOverdue ? '  (overdue)' : '');
     }
 
-    // Checkbox toggles are unrestricted (no password needed) — only the
-    // pour-date "edit" button and "Clear All" require unlocking.
+    // Require the edit password before the checkbox is allowed to toggle.
+    // Once unlocked (for the rest of the session) clicks pass straight
+    // through and the 'change' listener below saves as normal.
+    cb.addEventListener('click', (e) => {
+      if(!editingUnlocked){
+        e.preventDefault();
+        requestUnlock(() => {
+          cb.checked = !cb.checked;
+          applyStageChange();
+        });
+      }
+    });
     cb.addEventListener('change', () => {
-      applyStageChange();
+      if(editingUnlocked) applyStageChange();
     });
 
     textWrap.appendChild(lbl);
@@ -1005,31 +1015,34 @@ document.addEventListener('keydown', (e) => {
 let clearConfirmTimer = null;
 document.getElementById('clearAllBtn').addEventListener('click', () => {
   if(currentModalPanel === null) return;
-  const btn = document.getElementById('clearAllBtn');
+  const doClearStep = () => {
+    const btn = document.getElementById('clearAllBtn');
 
-  if(!btn.classList.contains('confirming')){
-    btn.classList.add('confirming');
-    btn.textContent = 'Click again to confirm';
-    clearConfirmTimer = setTimeout(() => {
-      btn.classList.remove('confirming');
-      btn.textContent = 'Clear All';
-    }, 3000);
-    return;
-  }
+    if(!btn.classList.contains('confirming')){
+      btn.classList.add('confirming');
+      btn.textContent = 'Click again to confirm';
+      clearConfirmTimer = setTimeout(() => {
+        btn.classList.remove('confirming');
+        btn.textContent = 'Clear All';
+      }, 3000);
+      return;
+    }
 
-  clearTimeout(clearConfirmTimer);
-  btn.classList.remove('confirming');
-  btn.textContent = 'Clear All';
+    clearTimeout(clearConfirmTimer);
+    btn.classList.remove('confirming');
+    btn.textContent = 'Clear All';
 
-  store[currentModalPanel] = {};
-  saveStore(store);
+    store[currentModalPanel] = {};
+    saveStore(store);
 
-  const p = panels.find(pp => pp.num === currentModalPanel);
-  const pourDate = effectivePourDate(p);
-  renderTimeline(p, pourDate, {});
+    const p = panels.find(pp => pp.num === currentModalPanel);
+    const pourDate = effectivePourDate(p);
+    renderTimeline(p, pourDate, {});
 
-  refreshPanelVisual(currentModalPanel);
-  updateTotal();
+    refreshPanelVisual(currentModalPanel);
+    updateTotal();
+  };
+  if(!editingUnlocked){ requestUnlock(doClearStep); } else { doClearStep(); }
 });
 
 /* ===================== Reference-date calendar picker ===================== */
