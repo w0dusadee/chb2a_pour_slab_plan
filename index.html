@@ -417,7 +417,24 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDWYqz4X6wz7eqolyDK9O5j5c2mpnmBI-0",
+  authDomain: "chb2a-pour-slab-plan.firebaseapp.com",
+  databaseURL: "https://chb2a-pour-slab-plan-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chb2a-pour-slab-plan",
+  storageBucket: "chb2a-pour-slab-plan.firebasestorage.app",
+  messagingSenderId: "2166796511",
+  appId: "1:2166796511:web:6f04a23847f7e1e53d796a"
+};
+const fbApp = initializeApp(firebaseConfig);
+const fbDb = getDatabase(fbApp);
+const storeRef = ref(fbDb, 'progress');
+const overridesRef = ref(fbDb, 'overrides');
+
 /* ===================== DATA =====================
    l/t/w/h        = panel cell region (% of plan image) -- click target
    nl/nt/nw/nh    = the printed red-bordered SEQUENCE NUMBER box (% of image)
@@ -501,7 +518,10 @@ const STORE_KEY = 'pourScheduleProgress_v8';
 function loadStore(){
   try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; }
 }
-function saveStore(s){ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+function saveStore(s){
+  localStorage.setItem(STORE_KEY, JSON.stringify(s));
+  set(storeRef, s).catch(err => console.error('Firebase sync (progress) failed:', err));
+}
 let store = loadStore();
 
 // Per-panel pour-date overrides (editable). Stored as {num: 'YYYY-MM-DD'}.
@@ -509,7 +529,10 @@ const OVR_KEY = 'pourDateOverrides_v1';
 function loadOverrides(){
   try{ return JSON.parse(localStorage.getItem(OVR_KEY)) || {}; }catch(e){ return {}; }
 }
-function saveOverrides(o){ localStorage.setItem(OVR_KEY, JSON.stringify(o)); }
+function saveOverrides(o){
+  localStorage.setItem(OVR_KEY, JSON.stringify(o));
+  set(overridesRef, o).catch(err => console.error('Firebase sync (overrides) failed:', err));
+}
 let overrides = loadOverrides();
 
 /* ===================== Edit password gate ===================== */
@@ -982,34 +1005,31 @@ document.addEventListener('keydown', (e) => {
 let clearConfirmTimer = null;
 document.getElementById('clearAllBtn').addEventListener('click', () => {
   if(currentModalPanel === null) return;
-  const doClearStep = () => {
-    const btn = document.getElementById('clearAllBtn');
+  const btn = document.getElementById('clearAllBtn');
 
-    if(!btn.classList.contains('confirming')){
-      btn.classList.add('confirming');
-      btn.textContent = 'Click again to confirm';
-      clearConfirmTimer = setTimeout(() => {
-        btn.classList.remove('confirming');
-        btn.textContent = 'Clear All';
-      }, 3000);
-      return;
-    }
+  if(!btn.classList.contains('confirming')){
+    btn.classList.add('confirming');
+    btn.textContent = 'Click again to confirm';
+    clearConfirmTimer = setTimeout(() => {
+      btn.classList.remove('confirming');
+      btn.textContent = 'Clear All';
+    }, 3000);
+    return;
+  }
 
-    clearTimeout(clearConfirmTimer);
-    btn.classList.remove('confirming');
-    btn.textContent = 'Clear All';
+  clearTimeout(clearConfirmTimer);
+  btn.classList.remove('confirming');
+  btn.textContent = 'Clear All';
 
-    store[currentModalPanel] = {};
-    saveStore(store);
+  store[currentModalPanel] = {};
+  saveStore(store);
 
-    const p = panels.find(pp => pp.num === currentModalPanel);
-    const pourDate = effectivePourDate(p);
-    renderTimeline(p, pourDate, {});
+  const p = panels.find(pp => pp.num === currentModalPanel);
+  const pourDate = effectivePourDate(p);
+  renderTimeline(p, pourDate, {});
 
-    refreshPanelVisual(currentModalPanel);
-    updateTotal();
-  };
-  if(!editingUnlocked){ requestUnlock(doClearStep); } else { doClearStep(); }
+  refreshPanelVisual(currentModalPanel);
+  updateTotal();
 });
 
 /* ===================== Reference-date calendar picker ===================== */
@@ -1166,6 +1186,68 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(renderPlan, 120);
 });
+
+/* ===================== Firebase cross-device sync =====================
+   On load: if the cloud already has data, it wins (it's the shared source
+   of truth). If the cloud is empty (brand-new database) but this browser
+   already has local progress saved, push that up once so it isn't lost.
+   After that, stay subscribed so edits made on any other device/browser
+   show up here automatically without a page reload. */
+function refreshOpenModalIfAny(){
+  if(currentModalPanel === null) return;
+  const p = panels.find(pp => pp.num === currentModalPanel);
+  if(!p) return;
+  const pourDate = effectivePourDate(p);
+  document.getElementById('modalSub').textContent =
+    'Main pour date: ' + fmtDDMM(pourDate) + '/' + pourDate.getFullYear();
+  document.getElementById('rankLine').textContent =
+    'Pour sequence: #' + getRank(currentModalPanel) + ' of ' + panels.length;
+  renderTimeline(p, pourDate, store[currentModalPanel] || {});
+}
+
+async function initFirebaseSync(){
+  try{
+    const [storeSnap, ovrSnap] = await Promise.all([get(storeRef), get(overridesRef)]);
+
+    if(storeSnap.exists()){
+      store = storeSnap.val() || {};
+      localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    } else if(Object.keys(store).length){
+      set(storeRef, store).catch(err => console.error('Firebase seed (progress) failed:', err));
+    }
+
+    if(ovrSnap.exists()){
+      overrides = ovrSnap.val() || {};
+      localStorage.setItem(OVR_KEY, JSON.stringify(overrides));
+    } else if(Object.keys(overrides).length){
+      set(overridesRef, overrides).catch(err => console.error('Firebase seed (overrides) failed:', err));
+    }
+  } catch(err){
+    console.error('Firebase initial sync failed, using local data only:', err);
+  }
+
+  renderPlan();
+  updateTotal();
+  refreshOpenModalIfAny();
+
+  onValue(storeRef, (snap) => {
+    store = snap.val() || {};
+    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    renderPlan();
+    updateTotal();
+    refreshOpenModalIfAny();
+  });
+
+  onValue(overridesRef, (snap) => {
+    overrides = snap.val() || {};
+    localStorage.setItem(OVR_KEY, JSON.stringify(overrides));
+    renderPlan();
+    updateTotal();
+    refreshOpenModalIfAny();
+  });
+}
+initFirebaseSync();
+
 </script>
 </body>
 </html>
