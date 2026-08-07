@@ -409,7 +409,7 @@
       </div>
     </div>
     <div class="pw-body">
-      <p class="hint">Enter the password to edit this task.</p>
+      <p class="hint" id="pwHint">Enter the password to edit this task.</p>
       <input type="password" id="pwInput" class="pw-input" autocomplete="off" />
       <p class="pw-error" id="pwError">Incorrect password.</p>
       <button class="pw-submit" id="pwSubmitBtn">Unlock</button>
@@ -538,15 +538,27 @@ let overrides = loadOverrides();
 /* ===================== Edit password gate ===================== */
 // Once entered correctly, editing stays unlocked for the rest of this
 // browser session so many panels/tasks can be edited quickly in a row.
-const EDIT_PASSWORD = '.';
-let editingUnlocked = false;
+// Task-progress edits (checkboxes / Clear All) and Main pour date edits
+// use separate passwords and are unlocked independently of each other.
+const EDIT_PASSWORDS = {
+  task: '.',
+  date: 'vy0'
+};
+const PW_HINTS = {
+  task: 'Enter the password to edit this task.',
+  date: 'Enter the password to edit the main pour date.'
+};
+let unlockedState = { task: false, date: false };
+let pendingUnlockType = null;
 let pendingUnlockCallback = null;
 
-function requestUnlock(callback){
-  if(editingUnlocked){ callback(); return; }
+function requestUnlock(type, callback){
+  if(unlockedState[type]){ callback(); return; }
+  pendingUnlockType = type;
   pendingUnlockCallback = callback;
   const err = document.getElementById('pwError');
   const input = document.getElementById('pwInput');
+  document.getElementById('pwHint').textContent = PW_HINTS[type];
   err.classList.remove('show');
   input.value = '';
   document.getElementById('pwOverlay').classList.add('open');
@@ -555,14 +567,17 @@ function requestUnlock(callback){
 
 function closePwOverlay(){
   document.getElementById('pwOverlay').classList.remove('open');
+  pendingUnlockType = null;
   pendingUnlockCallback = null;
 }
 
 function submitPw(){
   const input = document.getElementById('pwInput');
-  if(input.value === EDIT_PASSWORD){
-    editingUnlocked = true;
+  const type = pendingUnlockType;
+  if(type && input.value === EDIT_PASSWORDS[type]){
+    unlockedState[type] = true;
     const cb = pendingUnlockCallback;
+    pendingUnlockType = null;
     pendingUnlockCallback = null;
     document.getElementById('pwOverlay').classList.remove('open');
     if(cb) cb();
@@ -975,16 +990,16 @@ function renderTimeline(p, pourDate, rec){
     // Once unlocked (for the rest of the session) clicks pass straight
     // through and the 'change' listener below saves as normal.
     cb.addEventListener('click', (e) => {
-      if(!editingUnlocked){
+      if(!unlockedState.task){
         e.preventDefault();
-        requestUnlock(() => {
+        requestUnlock('task', () => {
           cb.checked = !cb.checked;
           applyStageChange();
         });
       }
     });
     cb.addEventListener('change', () => {
-      if(editingUnlocked) applyStageChange();
+      if(unlockedState.task) applyStageChange();
     });
 
     textWrap.appendChild(lbl);
@@ -1042,7 +1057,7 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
     refreshPanelVisual(currentModalPanel);
     updateTotal();
   };
-  if(!editingUnlocked){ requestUnlock(doClearStep); } else { doClearStep(); }
+  if(!unlockedState.task){ requestUnlock('task', doClearStep); } else { doClearStep(); }
 });
 
 /* ===================== Reference-date calendar picker ===================== */
@@ -1177,7 +1192,7 @@ document.getElementById('editDateBtn').addEventListener('click', (e) => {
     const pop = document.getElementById('editCalPop');
     pop.style.display = (pop.style.display === 'none') ? 'block' : 'none';
   };
-  if(!editingUnlocked){ requestUnlock(doOpen); } else { doOpen(); }
+  if(!unlockedState.date){ requestUnlock('date', doOpen); } else { doOpen(); }
 });
 document.getElementById('editCalPrev').addEventListener('click', (e) => {
   e.stopPropagation();
