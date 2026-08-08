@@ -343,7 +343,7 @@
     </div>
     <div class="legend">
       <span class="row"><span class="swatch" style="background:#b9e0a8"></span>Steps on/ahead of schedule</span>
-      <span class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;5 overdue</span>
+      <span class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;6 overdue</span>
       <span class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 6) overdue</span>
       <span class="row"><span class="swatch" style="background:#c7cbd1"></span>All 6 steps complete</span>
       <span class="row">Click any panel to view details</span>
@@ -506,6 +506,7 @@ panels.forEach(p => { p.area = AREA_BY_NUM[p.num]; });
 // days counting back from the pour date (keys unchanged so old saved
 // progress still lines up with the right task).
 const STAGES = [
+  { key:'termite',   offset:-6, label:'Termite Spraying' },
   { key:'lean',      offset:-5, label:'Lean Concrete Pour' },
   { key:'formwork',  offset:-4, label:'Formwork & Damp Proof' },
   { key:'rebarLow',  offset:-3, label:'Lower Rebar' },
