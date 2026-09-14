@@ -133,8 +133,16 @@
     padding:10px;
     display:flex;
     align-items:flex-start;
-    justify-content:center;
+    /* "safe center" keeps the plan centered while it fits, but falls back
+       to start-alignment once it's wider than the stage -- plain "center"
+       here was the actual reason panning broke after zooming in: a
+       flexbox centers overflowing content around the midpoint, which on
+       most mobile browsers makes the left half of the overflow
+       unreachable by scrolling/panning no matter how wide plan-wrap gets. */
+    justify-content:safe center;
     overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
   }
   .plan-wrap{
     position:relative;
