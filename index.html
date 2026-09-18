@@ -229,7 +229,7 @@
     color:var(--muted);
     pointer-events:none;
     border:1px solid rgba(0,0,0,.15);
-    z-index:3;
+    z-index:4;
     line-height:1.1;
     white-space:nowrap;
   }
@@ -247,7 +247,7 @@
     font-weight:700;
     color:var(--ink);
     pointer-events:none;
-    z-index:2;
+    z-index:3;
     line-height:1;
   }
   .date-overlay{
@@ -258,7 +258,7 @@
     font-weight:600;
     color:var(--ink);
     pointer-events:none;
-    z-index:2;
+    z-index:3;
     line-height:1;
     white-space:nowrap;
   }
@@ -272,12 +272,40 @@
     font-weight:600;
     color:var(--navy-2);
     pointer-events:none;
-    z-index:2;
+    z-index:3;
     line-height:1.15;
     white-space:nowrap;
     text-shadow:0 0 3px var(--paper), 0 0 3px var(--paper), 0 0 5px var(--paper);
   }
   .area-overlay sup{ font-size:.7em; }
+
+  /* Temporary access-road band -- drawn as a translucent green stripe so the
+     panel status colors, sequence numbers, dates and badges underneath/above
+     it all stay visible and clickable. Sits above the panel fill (.hit,
+     z-index:1) but below the number/date/area text and badge (z-index:2/3),
+     and ignores pointer events so clicks still reach the panel beneath it. */
+  .access-road-band{
+    position:absolute;
+    display:flex;
+    align-items:center;
+    justify-content:space-evenly;
+    background:repeating-linear-gradient(135deg,
+      rgba(66,160,72,.55) 0 14px,
+      rgba(46,125,50,.55) 14px 28px);
+    border-top:2px dashed rgba(255,255,255,.9);
+    border-bottom:2px dashed rgba(255,255,255,.9);
+    z-index:2;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .access-road-band span{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    color:#ffffff;
+    text-shadow:0 0 3px rgba(0,0,0,.75), 0 0 2px rgba(0,0,0,.95);
+    white-space:nowrap;
+    letter-spacing:.04em;
+  }
 
   /* Modal */
   .overlay{
@@ -551,6 +579,22 @@ const panels = [
   {num:39, date:'10/11', area:795, l:85.834, t:72.829, w:10.063, h:20.066, nl:89.916, nt:80.053, nw:1.900, nh:4.300, dl:89.566, dt:86.072, dw:2.600, dh:2.200},
 ];
 
+// Temporary access-road band -- horizontal strip running the full width of
+// the drawing (from the FSA label on the left to the DCH4 label on the
+// right). All values are % of the plan image, same coordinate system as the
+// panels above.
+//
+// Vertical position/thickness are derived from the drawing's own side
+// dimensions rather than eyeballed: a typical grid row is 25,000mm tall and
+// measures 20.066% of the image height (see any non-column-1 panel's `h`
+// above), giving a scale of 25000/20.066 = 1245.89 mm per 1% of image
+// height. Using that scale:
+//   - top edge sits 800mm (0.8m) below the bottom of the "37,150" dimension
+//     (i.e. below panel 3 / the E-D grid line, at t=42.450%):
+//     42.450 + 800/1245.89 = 43.092%
+//   - band thickness represents a 5,000mm (5m) wide road:
+//     5000/1245.89 = 4.013%
+const ACCESS_ROAD = { l: 4.718, t: 43.092, w: 91.179, h: 4.013, repeats: 9 };
 
 // Order per latest instruction: Lean -> Formwork & Damp Proof -> Lower Rebar
 // -> Grounding (M&E) -> Upper Rebar -> Concrete Pour. Offsets are sequential
@@ -776,11 +820,28 @@ function getRank(num){
 function renderPlan(){
   recomputeRanks();
   const wrap = document.getElementById('planWrap');
-  wrap.querySelectorAll('.hit, .num-overlay, .date-overlay, .area-overlay').forEach(el => el.remove());
+  wrap.querySelectorAll('.hit, .num-overlay, .date-overlay, .area-overlay, .access-road-band').forEach(el => el.remove());
 
   // Measure the container once per render (not once per overlay -- that was
   // forcing a layout reflow for every single number/date, 88+ times over).
   const wrapRect = wrap.getBoundingClientRect();
+
+  // Access-road band -- rendered first so panels paint their number/date/area
+  // text and badges above it (see z-index order in the stylesheet).
+  const roadEl = document.createElement('div');
+  roadEl.className = 'access-road-band';
+  roadEl.setAttribute('aria-hidden', 'true');
+  roadEl.style.left = ACCESS_ROAD.l + '%';
+  roadEl.style.top = ACCESS_ROAD.t + '%';
+  roadEl.style.width = ACCESS_ROAD.w + '%';
+  roadEl.style.height = ACCESS_ROAD.h + '%';
+  roadEl.style.fontSize = boxFontPx(wrapRect, ACCESS_ROAD.w / ACCESS_ROAD.repeats, ACCESS_ROAD.h, 0.6, 8);
+  for(let i = 0; i < ACCESS_ROAD.repeats; i++){
+    const label = document.createElement('span');
+    label.textContent = 'ACCESS ROAD';
+    roadEl.appendChild(label);
+  }
+  wrap.appendChild(roadEl);
 
   panels.forEach(p => {
     const hit = document.createElement('div');
