@@ -317,6 +317,10 @@
     text-shadow:0 0 3px var(--paper), 0 0 3px var(--paper), 0 0 5px var(--paper);
   }
   .area-overlay sup{ font-size:.7em; }
+  /* Tiny plan text is drawn at a safe 10px and shrunk with transform:scale().
+     Mobile browsers enforce a minimum font-size (~8px) that would otherwise
+     inflate it back and make the labels overflow / overlap each other. */
+  .sc{ display:inline-block; transform-origin:center center; white-space:nowrap; font-weight:inherit; }
 
   /* Temporary access-road band -- drawn as a translucent green stripe so the
      panel status colors, sequence numbers, dates and badges underneath/above
@@ -337,6 +341,7 @@
     pointer-events:none;
     overflow:hidden;
   }
+  .access-road-band .rl{ flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; }
   .access-road-band span{
     font-family:'IBM Plex Mono',monospace;
     font-weight:700;
@@ -1011,10 +1016,16 @@ function renderPlan(){
     // Match the badge's footprint to the panel's pour-date box rather than
     // a fixed pixel size, so it stays as small/subtle as the date text
     // instead of looming large over the drawing.
-    badge.style.fontSize = boxFontPx(wrapRect, p.dw, p.dh, 0.62, 6);
+    const badgePx = parseFloat(boxFontPx(wrapRect, p.dw, p.dh, 0.62, 6));
     const ps = planScale(wrapRect);
+    if(badgePx >= 9){
+      badge.style.fontSize = badgePx + 'px';
+    } else {
+      badge.style.fontSize = SAFE_FONT_PX + 'px';
+      badge.style.transform = 'scale(' + (badgePx / SAFE_FONT_PX).toFixed(4) + ')';
+      badge.style.transformOrigin = 'top right';
+    }
     badge.style.top = badge.style.right = Math.max(1, 2 * ps) + 'px';
-    badge.style.borderWidth = Math.max(0.5, ps) + 'px';
     hit.appendChild(badge);
 
     hit.addEventListener('click', () => openModal(p.num));
@@ -1032,9 +1043,8 @@ function renderPlan(){
     numEl.style.top = p.nt + '%';
     numEl.style.width = p.nw + '%';
     numEl.style.height = p.nh + '%';
-    numEl.style.fontSize = boxFontPx(wrapRect, p.nw, p.nh, 0.46, 7);
     numEl.style.borderWidth = Math.max(0.8, Math.min(1.6, wrapRect.width / 1100)) + 'px';
-    numEl.textContent = getRank(p.num);
+    setScaledText(numEl, String(getRank(p.num)), parseFloat(boxFontPx(wrapRect, p.nw, p.nh, 0.46, 7)));
     wrap.appendChild(numEl);
 
     // Live overlay that replaces the printed pour-date text
@@ -1045,8 +1055,7 @@ function renderPlan(){
     dateEl.style.top = p.dt + '%';
     dateEl.style.width = p.dw + '%';
     dateEl.style.height = p.dh + '%';
-    dateEl.style.fontSize = boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7);
-    dateEl.textContent = fmtDDMM(effectivePourDate(p));
+    setScaledText(dateEl, fmtDDMM(effectivePourDate(p)), parseFloat(boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7)));
     wrap.appendChild(dateEl);
 
     // Area label -- placed in whichever blank band of the panel cell is
@@ -1062,8 +1071,7 @@ function renderPlan(){
       areaEl.style.top = band.top + '%';
       areaEl.style.width = p.w + '%';
       areaEl.style.height = band.height + '%';
-      areaEl.style.fontSize = boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7);
-      areaEl.innerHTML = formatAreaLabelHTML(p.area);
+      setScaledText(areaEl, formatAreaLabelHTML(p.area), parseFloat(boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7)));
       wrap.appendChild(areaEl);
     }
   });
@@ -1095,7 +1103,8 @@ function renderAccessRoad(wrapRect){
   if(cur < rEnd) segs.push([cur, rEnd]);
 
   const slot = r.w / r.repeats;                       // width of one "ACCESS ROAD" label
-  const fs = boxFontPx(wrapRect, slot, r.h, 0.6, 8);  // same label size on every strip
+  const fpx = parseFloat(boxFontPx(wrapRect, slot, r.h, 0.6, 8));  // same label size on every strip
+  const tiny = fpx < 9;
   segs.forEach(([a, b]) => {
     const w = b - a;
     if(w < 0.8) return;                               // ignore slivers (expansion-joint gaps)
@@ -1106,11 +1115,20 @@ function renderAccessRoad(wrapRect){
     el.style.top = r.t + '%';
     el.style.width = w + '%';
     el.style.height = r.h + '%';
-    el.style.fontSize = fs;
+    el.style.fontSize = (tiny ? SAFE_FONT_PX : fpx) + 'px';
     const n = Math.max(w >= slot * 0.7 ? 1 : 0, Math.round(w / slot));
     for(let i = 0; i < n; i++){
       const label = document.createElement('span');
-      label.textContent = 'ACCESS ROAD';
+      label.className = 'rl';
+      if(tiny){
+        const inner = document.createElement('b');
+        inner.className = 'sc';
+        inner.style.transform = 'scale(' + (fpx / SAFE_FONT_PX).toFixed(4) + ')';
+        inner.textContent = 'ACCESS ROAD';
+        label.appendChild(inner);
+      } else {
+        label.textContent = 'ACCESS ROAD';
+      }
       el.appendChild(label);
     }
     wrap.appendChild(el);
@@ -1124,6 +1142,18 @@ function renderAccessRoad(wrapRect){
 // The minimum is scaled down on narrow plans (phones): a fixed 6-8px floor
 // is bigger than the printed boxes themselves once the whole drawing is only
 // ~360px wide, which is why the text used to overflow/overlap on mobile.
+// Sets box text at an on-screen size of fontPx. Sizes the browser would clamp
+// up (< ~9px) are rendered at 10px and visually shrunk with transform instead.
+const SAFE_FONT_PX = 10;
+function setScaledText(el, html, fontPx){
+  if(fontPx >= 9){
+    el.style.fontSize = fontPx + 'px';
+    el.innerHTML = html;
+    return;
+  }
+  el.style.fontSize = SAFE_FONT_PX + 'px';
+  el.innerHTML = '<span class="sc" style="transform:scale(' + (fontPx / SAFE_FONT_PX).toFixed(4) + ')">' + html + '</span>';
+}
 function planScale(wrapRect){ return Math.min(1, wrapRect.width / 1100); }
 function fontFloor(wrapRect, minPx){
   return Math.max(2.5, minPx * planScale(wrapRect));
