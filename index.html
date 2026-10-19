@@ -64,6 +64,20 @@
   .date-btn:hover{ background:rgba(255,255,255,.12); }
   .date-btn b{ font-size:12px; }
   .date-btn .cal-ico{ font-size:12px; opacity:.8; }
+  .save-status{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; padding:5px 9px;
+    border-radius:4px; border:1px solid rgba(255,255,255,.25); color:#c7cbd1;
+    white-space:nowrap;
+  }
+  .save-status.ok{ color:#b9e0a8; border-color:rgba(185,224,168,.5); }
+  .save-status.dirty{ color:#f0b878; border-color:rgba(240,184,120,.6); }
+  /* Mode-specific controls: the page runs either ONLINE (Firebase sync) or
+     OFFLINE (data embedded in the file itself). <html class="offline"> is
+     set at load when the file carries embedded data. */
+  .only-offline{ display:none !important; }
+  html.offline .only-offline{ display:flex !important; }
+  html.offline span.only-offline{ display:inline-block !important; }
+  html.offline .only-online{ display:none !important; }
 
   .cal-pop{
     position:absolute;
@@ -111,11 +125,36 @@
     cursor:pointer; text-decoration:underline;
   }
 
-  .legend{ display:flex; flex-wrap:wrap; gap:12px; font-size:10.5px; color:#c7d3e2; align-items:center; }
-  .legend .row{ display:flex; align-items:center; }
-  .legend span.swatch{
-    display:inline-block; width:11px; height:11px; border-radius:2px;
-    margin-right:5px; vertical-align:-2px; border:1px solid rgba(0,0,0,.2);
+  /* "Symbols" key -- framed box pinned to the bottom-left of the page,
+     one symbol per line. */
+  .symbols-bar{
+    flex:0 0 auto;
+    display:flex; justify-content:flex-start;
+    padding:6px 12px 10px;
+  }
+  .symbols{
+    background:rgba(11,36,64,.92);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:6px;
+    padding:7px 12px 8px;
+    color:#c7d3e2;
+    font-size:10.5px;
+    line-height:1.35;
+    box-shadow:0 4px 14px rgba(0,0,0,.3);
+  }
+  .symbols h2{
+    margin:0 0 5px; padding-bottom:4px;
+    font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+    color:#8ea9db; border-bottom:1px solid rgba(255,255,255,.18);
+  }
+  .symbols .row{ display:flex; align-items:center; padding:1.5px 0; }
+  .symbols span.swatch{
+    display:inline-block; width:11px; height:11px; border-radius:2px; flex-shrink:0;
+    margin-right:7px; border:1px solid rgba(0,0,0,.2);
+  }
+  .symbols .hint{
+    margin-top:4px; padding-top:4px; border-top:1px dashed rgba(255,255,255,.18);
+    color:#8ea9db; font-size:9.5px;
   }
   .progress-total{
     margin-left:auto;
@@ -405,6 +444,61 @@
     font-family:'IBM Plex Mono',monospace; cursor:pointer;
   }
   .pw-submit:hover{ background:var(--navy-2); }
+
+  /* ===================== Phones / small screens =====================
+     Every text size below is fluid: clamp(floor, N vw, desktop size), so the
+     UI shrinks smoothly with the screen width instead of keeping desktop
+     pixel sizes on a 360-430px wide phone. */
+  @media (max-width:640px){
+    header{ padding:8px 10px 8px; }
+    .eyebrow{ font-size:clamp(7.5px,2.2vw,10px); letter-spacing:.08em; margin-bottom:2px; }
+    h1{ font-size:clamp(11px,3.4vw,16px); line-height:1.25; }
+    .toolbar{ gap:6px 10px; margin-top:6px; }
+    .date-btn{ font-size:clamp(9px,2.6vw,11px); padding:4px 7px; gap:5px; }
+    .date-btn b{ font-size:clamp(9.5px,2.8vw,12px); }
+    .date-btn .cal-ico{ font-size:clamp(10px,2.9vw,12px); }
+    .save-status{ font-size:clamp(8.5px,2.4vw,11px); padding:4px 7px; white-space:normal; }
+    .symbols-bar{ padding:4px 8px 8px; }
+    .symbols{ font-size:clamp(8px,2.3vw,10.5px); padding:5px 9px 6px; }
+    .symbols h2{ font-size:clamp(7.5px,2.1vw,10px); margin-bottom:3px; padding-bottom:3px; }
+    .symbols span.swatch{ width:9px; height:9px; margin-right:5px; }
+    .symbols .hint{ font-size:clamp(7.5px,2.1vw,9.5px); }
+    .progress-total{ font-size:clamp(8.5px,2.5vw,11px); padding:4px 8px; margin-left:0; }
+    .cal-pop{ width:min(240px, 78vw); }
+    .cal-head .cal-title{ font-size:clamp(10.5px,3vw,12px); }
+    .cal-grid{ font-size:clamp(9px,2.6vw,10.5px); }
+    .stage{ padding:6px; }
+
+    .zoom-controls{ right:8px; bottom:8px; gap:4px; padding:4px; border-radius:7px; }
+    .zoom-controls .zoom-icon{ font-size:11px; }
+    .zoom-controls button{ width:26px; height:26px; font-size:13px; }
+    .zoom-controls .zoom-fit{ font-size:10px; }
+    .zoom-controls .zoom-pct{ font-size:9px; min-width:28px; }
+
+    .overlay{ padding:10px; }
+    .modal{ max-height:92vh; }
+    .modal-head{ padding:12px 14px 8px; }
+    .modal-head h2{ font-size:clamp(13px,3.7vw,17px); }
+    .modal-head button{ font-size:clamp(16px,4.6vw,20px); }
+    .area-volume-info p{ font-size:clamp(9.5px,2.8vw,12px); }
+    .pour-row p{ font-size:clamp(9.5px,2.8vw,12px); }
+    .edit-date-btn{ font-size:clamp(9px,2.5vw,10px); }
+    .rank-line{ font-size:clamp(9px,2.6vw,11px); }
+    .clear-all-btn{ font-size:clamp(9px,2.6vw,11px) !important; padding:4px 7px !important; }
+    #editCalPop{ margin:8px 14px 0 !important; }
+    .timeline{ padding:8px 14px 12px; }
+    .step{ gap:9px; padding:7px 0; }
+    .step:last-child{ margin:0 -14px; padding:9px 14px; }
+    .step .idx{ width:17px; height:17px; font-size:clamp(9px,2.6vw,11px); }
+    .step .label{ font-size:clamp(10.5px,3vw,13px); }
+    .step .date{ font-size:clamp(9.5px,2.7vw,12px); }
+    .step input[type=checkbox]{ width:14px; height:14px; }
+    .modal-foot{ padding:0 14px 12px; font-size:clamp(8.5px,2.4vw,11px); }
+    .pw-body{ padding:2px 14px 16px; }
+    .pw-body p.hint{ font-size:clamp(9.5px,2.8vw,12px); }
+    .pw-input{ font-size:16px; } /* >=16px stops iOS zooming the page on focus */
+    .pw-submit{ font-size:clamp(11px,3.2vw,13px); }
+  }
 </style>
 </head>
 <body>
@@ -428,16 +522,19 @@
         <div class="cal-foot"><button id="calToday">Jump to today</button></div>
       </div>
     </div>
-    <div class="legend">
-      <span class="row"><span class="swatch" style="background:#b9e0a8"></span>Steps on/ahead of schedule</span>
-      <span class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;6 overdue</span>
-      <span class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 6) overdue</span>
-      <span class="row"><span class="swatch" style="background:#c7cbd1"></span>All 6 steps complete</span>
-      <span class="row">Click any panel to view details</span>
-    </div>
+    <button class="date-btn only-online" id="offlineBtn" type="button" title="Download an OFFLINE copy of this page. Current progress and pour dates are written INTO the file; the copy never reads browser storage or Firebase.">
+      <span>Save offline copy</span>
+      <span class="cal-ico">&#128190;</span>
+    </button>
+    <button class="date-btn only-offline" id="exportBtn" type="button" title="Write all progress and pour-date edits into this HTML file (data is stored inside the file, not in the browser)">
+      <span>Save to file</span>
+      <span class="cal-ico">&#128190;</span>
+    </button>
+    <span class="save-status ok only-offline" id="saveStatus">&#9679; Saved in file</span>
     <div class="progress-total" id="progressTotal">
       <span class="tasks-line">Total progress: 0 / 280 tasks</span>
       <span class="volume-line" id="progressVolume">0.00 / 0.00 cu.m.</span>
+      <span class="volume-line" id="progressArea">0.00 / 0.00 sq.m. (0.00%)</span>
     </div>
   </div>
 </header>
@@ -452,6 +549,17 @@
     <div class="zoom-pct" id="zoomLabel">100%</div>
     <button id="zoomOutBtn" type="button" title="Zoom out" aria-label="Zoom out">&minus;</button>
     <button id="zoomFitBtn" type="button" class="zoom-fit" title="Fit to screen" aria-label="Fit to screen">[&nbsp;&nbsp;]</button>
+  </div>
+</div>
+
+<div class="symbols-bar">
+  <div class="symbols" role="group" aria-label="Symbols">
+    <h2>Symbols</h2>
+    <div class="row"><span class="swatch" style="background:#b9e0a8"></span>Steps on/ahead of schedule</div>
+    <div class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;6 overdue</div>
+    <div class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 7) overdue</div>
+    <div class="row"><span class="swatch" style="background:#c7cbd1"></span>All 7 steps complete</div>
+    <div class="hint">Click any panel to view details</div>
   </div>
 </div>
 
@@ -511,9 +619,28 @@
   </div>
 </div>
 
+<!-- Empty in the online page. An offline copy carries {"v":1,"store":{...},"overrides":{...}}
+     here and, when this block is non-empty, the page runs fully offline. -->
+<script id="embeddedData" type="application/json"></script>
+
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+/* ===================== Run mode: ONLINE or OFFLINE =====================
+   OFFLINE = the file carries its own data in #embeddedData. Nothing is read
+   from or written to browser storage and Firebase is never contacted; every
+   machine that opens the file sees exactly what was last saved into it.
+   ONLINE  = the normal hosted page: Firebase live sync + localStorage cache. */
+const embeddedEl = document.getElementById('embeddedData');
+function readEmbedded(){
+  try{
+    const t = embeddedEl ? embeddedEl.textContent.trim() : '';
+    if(!t) return null;
+    const d = JSON.parse(t);
+    return (d && typeof d === 'object') ? d : null;
+  }catch(e){ return null; }
+}
+const EMBEDDED = readEmbedded();
+const OFFLINE = EMBEDDED !== null;
+document.documentElement.classList.toggle('offline', OFFLINE);
 
 const firebaseConfig = {
   apiKey: "AIzaSyDWYqz4X6wz7eqolyDK9O5j5c2mpnmBI-0",
@@ -524,10 +651,23 @@ const firebaseConfig = {
   messagingSenderId: "2166796511",
   appId: "1:2166796511:web:6f04a23847f7e1e53d796a"
 };
-const fbApp = initializeApp(firebaseConfig);
-const fbDb = getDatabase(fbApp);
-const storeRef = ref(fbDb, 'progress');
-const overridesRef = ref(fbDb, 'overrides');
+// Firebase is loaded lazily and ONLY in online mode (a dynamic import, so a
+// failed/blocked network never stops the page from working with local data).
+let fb = null;
+async function loadFirebase(){
+  const base = 'https://www.gstatic.com/firebasejs/10.13.0/';
+  const [appMod, dbMod] = await Promise.all([
+    import(base + 'firebase-app.js'),
+    import(base + 'firebase-database.js')
+  ]);
+  const app = appMod.initializeApp(firebaseConfig);
+  const db = dbMod.getDatabase(app);
+  return {
+    set: dbMod.set, get: dbMod.get, onValue: dbMod.onValue,
+    storeRef: dbMod.ref(db, 'progress'),
+    overridesRef: dbMod.ref(db, 'overrides')
+  };
+}
 
 /* ===================== DATA =====================
    l/t/w/h        = panel cell region (% of plan image) -- click target
@@ -630,23 +770,41 @@ function stageOffset(panelNum, stage){
 }
 
 const STORE_KEY = 'pourScheduleProgress_v8';
+const OVR_KEY = 'pourDateOverrides_v1';
+
+// Browser storage helpers -- never touched in OFFLINE mode, and wrapped so a
+// browser that blocks storage (private mode, some file:// setups) can't break
+// the page.
+function lsGet(key){
+  try{ return JSON.parse(localStorage.getItem(key)) || {}; }catch(e){ return {}; }
+}
+function lsSet(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+}
+
+// Task progress: {panelNum: {stageKey: true}}
 function loadStore(){
-  try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; }
+  if(OFFLINE) return (EMBEDDED.store && typeof EMBEDDED.store === 'object') ? EMBEDDED.store : {};
+  return lsGet(STORE_KEY);
 }
 function saveStore(s){
-  localStorage.setItem(STORE_KEY, JSON.stringify(s));
-  set(storeRef, s).catch(err => console.error('Firebase sync (progress) failed:', err));
+  if(OFFLINE){ markDirty(); return; }
+  lsSet(STORE_KEY, s);
+  syncSnapshot();
+  if(fb) fb.set(fb.storeRef, s).catch(err => console.error('Firebase sync (progress) failed:', err));
 }
 let store = loadStore();
 
 // Per-panel pour-date overrides (editable). Stored as {num: 'YYYY-MM-DD'}.
-const OVR_KEY = 'pourDateOverrides_v1';
 function loadOverrides(){
-  try{ return JSON.parse(localStorage.getItem(OVR_KEY)) || {}; }catch(e){ return {}; }
+  if(OFFLINE) return (EMBEDDED.overrides && typeof EMBEDDED.overrides === 'object') ? EMBEDDED.overrides : {};
+  return lsGet(OVR_KEY);
 }
 function saveOverrides(o){
-  localStorage.setItem(OVR_KEY, JSON.stringify(o));
-  set(overridesRef, o).catch(err => console.error('Firebase sync (overrides) failed:', err));
+  if(OFFLINE){ markDirty(); return; }
+  lsSet(OVR_KEY, o);
+  syncSnapshot();
+  if(fb) fb.set(fb.overridesRef, o).catch(err => console.error('Firebase sync (overrides) failed:', err));
 }
 let overrides = loadOverrides();
 
@@ -723,13 +881,13 @@ function parseDDMM(str, year){
   return new Date(year, m-1, d);
 }
 function fmtDDMM(date){ return date.getDate() + '/' + (date.getMonth()+1); }
-function formatArea(n){ return n.toFixed(2); }
+function formatArea(n){ return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 // Label shown on the panel drawing itself: rounded UP to a whole number,
 // with the "2" in "m.2" rendered as a superscript. Kept separate from
 // formatArea() above, which still feeds the two-decimal "sq.m." / "cu.m."
 // lines in the modal.
 function formatAreaLabelHTML(n){
-  return Math.ceil(n) + ' m.<sup>2</sup>';
+  return Math.ceil(n).toLocaleString('en-US') + ' m.<sup>2</sup>';
 }
 function fmtDDMMYYYY(date){
   const dd = String(date.getDate()).padStart(2,'0');
@@ -826,22 +984,9 @@ function renderPlan(){
   // forcing a layout reflow for every single number/date, 88+ times over).
   const wrapRect = wrap.getBoundingClientRect();
 
-  // Access-road band -- rendered first so panels paint their number/date/area
-  // text and badges above it (see z-index order in the stylesheet).
-  const roadEl = document.createElement('div');
-  roadEl.className = 'access-road-band';
-  roadEl.setAttribute('aria-hidden', 'true');
-  roadEl.style.left = ACCESS_ROAD.l + '%';
-  roadEl.style.top = ACCESS_ROAD.t + '%';
-  roadEl.style.width = ACCESS_ROAD.w + '%';
-  roadEl.style.height = ACCESS_ROAD.h + '%';
-  roadEl.style.fontSize = boxFontPx(wrapRect, ACCESS_ROAD.w / ACCESS_ROAD.repeats, ACCESS_ROAD.h, 0.6, 8);
-  for(let i = 0; i < ACCESS_ROAD.repeats; i++){
-    const label = document.createElement('span');
-    label.textContent = 'ACCESS ROAD';
-    roadEl.appendChild(label);
-  }
-  wrap.appendChild(roadEl);
+  // Access road (drawn under the panel text/badges via z-index). It is cut away
+  // over every panel that already has a ticked task -- see renderAccessRoad().
+  renderAccessRoad(wrapRect);
 
   panels.forEach(p => {
     const hit = document.createElement('div');
@@ -852,7 +997,7 @@ function renderPlan(){
     hit.style.height = p.h + '%';
     hit.setAttribute('tabindex','0');
     hit.setAttribute('role','button');
-    hit.setAttribute('aria-label', 'Panel ' + p.num + ', pour date ' + p.date);
+    hit.setAttribute('aria-label', 'Panel ' + getRank(p.num) + ', pour date ' + fmtDDMM(effectivePourDate(p)));
     hit.dataset.panel = p.num;
 
     const status = panelStatus(p);
@@ -867,6 +1012,9 @@ function renderPlan(){
     // a fixed pixel size, so it stays as small/subtle as the date text
     // instead of looming large over the drawing.
     badge.style.fontSize = boxFontPx(wrapRect, p.dw, p.dh, 0.62, 6);
+    const ps = planScale(wrapRect);
+    badge.style.top = badge.style.right = Math.max(1, 2 * ps) + 'px';
+    badge.style.borderWidth = Math.max(0.5, ps) + 'px';
     hit.appendChild(badge);
 
     hit.addEventListener('click', () => openModal(p.num));
@@ -885,6 +1033,7 @@ function renderPlan(){
     numEl.style.width = p.nw + '%';
     numEl.style.height = p.nh + '%';
     numEl.style.fontSize = boxFontPx(wrapRect, p.nw, p.nh, 0.46, 7);
+    numEl.style.borderWidth = Math.max(0.8, Math.min(1.6, wrapRect.width / 1100)) + 'px';
     numEl.textContent = getRank(p.num);
     wrap.appendChild(numEl);
 
@@ -919,15 +1068,69 @@ function renderPlan(){
     }
   });
   updateTotal();
+  if(!OFFLINE) syncSnapshot();
+}
+
+// Draws the temporary access road as one or more strips. Once ANY task has
+// been ticked in a panel that the road crosses, work has started there and
+// vehicles can no longer drive through it, so the road is removed over that
+// panel's width (the rest of the road stays). Un-ticking everything / Clear
+// All brings the road back over that panel.
+function renderAccessRoad(wrapRect){
+  const wrap = document.getElementById('planWrap');
+  wrap.querySelectorAll('.access-road-band').forEach(el => el.remove());
+
+  const r = ACCESS_ROAD, rEnd = r.l + r.w, rBot = r.t + r.h;
+  const blocked = panels
+    .filter(p => p.t < rBot && (p.t + p.h) > r.t && panelProgress(p.num) > 0)
+    .map(p => [p.l, p.l + p.w])
+    .sort((a, b) => a[0] - b[0]);
+
+  const segs = [];
+  let cur = r.l;
+  blocked.forEach(([a, b]) => {
+    if(a > cur) segs.push([cur, Math.min(a, rEnd)]);
+    cur = Math.max(cur, b);
+  });
+  if(cur < rEnd) segs.push([cur, rEnd]);
+
+  const slot = r.w / r.repeats;                       // width of one "ACCESS ROAD" label
+  const fs = boxFontPx(wrapRect, slot, r.h, 0.6, 8);  // same label size on every strip
+  segs.forEach(([a, b]) => {
+    const w = b - a;
+    if(w < 0.8) return;                               // ignore slivers (expansion-joint gaps)
+    const el = document.createElement('div');
+    el.className = 'access-road-band';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.left = a + '%';
+    el.style.top = r.t + '%';
+    el.style.width = w + '%';
+    el.style.height = r.h + '%';
+    el.style.fontSize = fs;
+    const n = Math.max(w >= slot * 0.7 ? 1 : 0, Math.round(w / slot));
+    for(let i = 0; i < n; i++){
+      const label = document.createElement('span');
+      label.textContent = 'ACCESS ROAD';
+      el.appendChild(label);
+    }
+    wrap.appendChild(el);
+  });
 }
 
 // Convert a box's registered width/height (each a % of the container) into
 // a font-size in real rendered pixels, using the container's actual size --
 // this is what keeps every overlay pinned to a sane, legible size instead
 // of ballooning to fill the panel regardless of window width.
+// The minimum is scaled down on narrow plans (phones): a fixed 6-8px floor
+// is bigger than the printed boxes themselves once the whole drawing is only
+// ~360px wide, which is why the text used to overflow/overlap on mobile.
+function planScale(wrapRect){ return Math.min(1, wrapRect.width / 1100); }
+function fontFloor(wrapRect, minPx){
+  return Math.max(2.5, minPx * planScale(wrapRect));
+}
 function boxFontPx(wrapRect, wPct, hPct, factor, minPx){
   const boxPx = Math.min(wrapRect.width * (wPct / 100), wrapRect.height * (hPct / 100));
-  return Math.max(minPx, boxPx * factor) + 'px';
+  return Math.max(fontFloor(wrapRect, minPx), boxPx * factor) + 'px';
 }
 
 // Finds an open vertical band (full panel width) inside panel p that does
@@ -966,7 +1169,7 @@ function findAreaBand(p, wrapRect){
   // rendered height so the area label clears it, without eating into the
   // margin already reserved above the number/date box.
   if(Math.abs(best.top - panelTop) < 0.01 && wrapRect && wrapRect.height){
-    const badgeClearancePx = 21; // ~badge height + its 2px top offset
+    const badgeClearancePx = parseFloat(boxFontPx(wrapRect, p.dw, p.dh, 0.62, 6)) * 1.9 + Math.max(1, 2 * planScale(wrapRect)); // ~badge height + its top offset
     const clearancePct = (badgeClearancePx / wrapRect.height) * 100;
     const minHeight = 2; // keep at least this much band height
     const shiftedTop = Math.min(best.top + clearancePct, best.bottom - minHeight);
@@ -988,14 +1191,17 @@ function updateTotal(){
   let total = 0;
   let pouredVolume = 0;
   let totalVolume = 0;
+  let pouredArea = 0;
+  let totalArea = 0;
   const pourKey = STAGES[STAGES.length - 1].key;
   panels.forEach(p => {
     total += panelProgress(p.num);
     if(p.area != null){
       const vol = p.area * 0.30;
       totalVolume += vol;
+      totalArea += p.area;
       const rec = store[p.num] || {};
-      if(rec[pourKey]) pouredVolume += vol;
+      if(rec[pourKey]){ pouredVolume += vol; pouredArea += p.area; }
     }
   });
   const totalTasks = panels.length * STAGES.length;
@@ -1006,6 +1212,11 @@ function updateTotal(){
   const volEl = document.getElementById('progressVolume');
   if(volEl){
     volEl.textContent = formatArea(pouredVolume) + ' / ' + formatArea(totalVolume) + ' cu.m.';
+  }
+  const areaEl = document.getElementById('progressArea');
+  if(areaEl){
+    const pct = totalArea > 0 ? (pouredArea / totalArea * 100) : 0;
+    areaEl.textContent = formatArea(pouredArea) + ' / ' + formatArea(totalArea) + ' sq.m. (' + pct.toFixed(2) + '%)';
   }
 }
 
@@ -1021,9 +1232,24 @@ function refreshPanelVisual(num){
   if(hit && p){
     applyStatusColor(hit, panelStatus(p));
   }
+  renderAccessRoad(document.getElementById('planWrap').getBoundingClientRect());
 }
 
 let currentModalPanel = null;
+
+// Title / date / sequence lines of the task window. The number in the title
+// is the panel's CURRENT pour-sequence rank -- exactly what the plan tile
+// shows -- so it follows any pour-date edit (the static p.num is only the
+// panel's internal id for progress/override storage).
+function updateModalHeader(p){
+  const pourDate = effectivePourDate(p);
+  const rank = getRank(p.num);
+  document.getElementById('modalTitle').textContent = 'Panel ' + rank;
+  document.getElementById('modalSub').textContent =
+    'Main pour date: ' + fmtDDMM(pourDate) + '/' + pourDate.getFullYear();
+  document.getElementById('rankLine').textContent =
+    'Pour sequence: #' + rank + ' of ' + panels.length;
+}
 
 function openModal(num){
   currentModalPanel = num;
@@ -1035,11 +1261,7 @@ function openModal(num){
   if(clearBtn){ clearBtn.classList.remove('confirming'); clearBtn.textContent = 'Clear All'; }
   document.getElementById('editCalPop').style.display = 'none';
 
-  document.getElementById('modalTitle').textContent = 'Panel ' + num;
-  document.getElementById('modalSub').textContent =
-    'Main pour date: ' + fmtDDMM(pourDate) + '/' + pourDate.getFullYear();
-  document.getElementById('rankLine').textContent =
-    'Pour sequence: #' + getRank(num) + ' of ' + panels.length;
+  updateModalHeader(p);
 
   if(p.area != null){
     document.getElementById('modalVolumeLine').textContent =
@@ -1053,8 +1275,9 @@ function openModal(num){
 
   renderTimeline(p, pourDate, rec);
 
-  document.getElementById('modalFoot').textContent =
-    'Check off each step to save progress (auto-saved in this browser).';
+  document.getElementById('modalFoot').textContent = OFFLINE
+    ? 'Check off each step, then press "Save to file" (progress is stored inside the file).'
+    : 'Check off each step to save progress (synced online and cached in this browser).';
 
   document.getElementById('overlay').classList.add('open');
 }
@@ -1398,29 +1621,27 @@ function refreshOpenModalIfAny(){
   const p = panels.find(pp => pp.num === currentModalPanel);
   if(!p) return;
   const pourDate = effectivePourDate(p);
-  document.getElementById('modalSub').textContent =
-    'Main pour date: ' + fmtDDMM(pourDate) + '/' + pourDate.getFullYear();
-  document.getElementById('rankLine').textContent =
-    'Pour sequence: #' + getRank(currentModalPanel) + ' of ' + panels.length;
+  updateModalHeader(p);
   renderTimeline(p, pourDate, store[currentModalPanel] || {});
 }
 
 async function initFirebaseSync(){
   try{
-    const [storeSnap, ovrSnap] = await Promise.all([get(storeRef), get(overridesRef)]);
+    fb = await loadFirebase();
+    const [storeSnap, ovrSnap] = await Promise.all([fb.get(fb.storeRef), fb.get(fb.overridesRef)]);
 
     if(storeSnap.exists()){
       store = storeSnap.val() || {};
-      localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      lsSet(STORE_KEY, store);
     } else if(Object.keys(store).length){
-      set(storeRef, store).catch(err => console.error('Firebase seed (progress) failed:', err));
+      fb.set(fb.storeRef, store).catch(err => console.error('Firebase seed (progress) failed:', err));
     }
 
     if(ovrSnap.exists()){
       overrides = ovrSnap.val() || {};
-      localStorage.setItem(OVR_KEY, JSON.stringify(overrides));
+      lsSet(OVR_KEY, overrides);
     } else if(Object.keys(overrides).length){
-      set(overridesRef, overrides).catch(err => console.error('Firebase seed (overrides) failed:', err));
+      fb.set(fb.overridesRef, overrides).catch(err => console.error('Firebase seed (overrides) failed:', err));
     }
   } catch(err){
     console.error('Firebase initial sync failed, using local data only:', err);
@@ -1430,23 +1651,174 @@ async function initFirebaseSync(){
   updateTotal();
   refreshOpenModalIfAny();
 
-  onValue(storeRef, (snap) => {
+  if(!fb) return;
+
+  fb.onValue(fb.storeRef, (snap) => {
     store = snap.val() || {};
-    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    lsSet(STORE_KEY, store);
     renderPlan();
     updateTotal();
     refreshOpenModalIfAny();
   });
 
-  onValue(overridesRef, (snap) => {
+  fb.onValue(fb.overridesRef, (snap) => {
     overrides = snap.val() || {};
-    localStorage.setItem(OVR_KEY, JSON.stringify(overrides));
+    lsSet(OVR_KEY, overrides);
     renderPlan();
     updateTotal();
     refreshOpenModalIfAny();
   });
 }
-initFirebaseSync();
+
+/* ===================== Offline copy / "Save to file" =====================
+   syncSnapshot() mirrors the live progress + pour-date edits into the
+   #embeddedData block of the CURRENT page, so any serialisation of the page
+   (the buttons below, or the browser's own "Save page as... (complete)")
+   carries the data and reopens in OFFLINE mode.
+
+   ONLINE : "Save offline copy" downloads  Pour_Concrete_Slab_DD_MM_YYYY_Offline.html
+   OFFLINE: "Save to file" writes the data back into the opened file.
+     - Chrome / Edge (desktop): first click opens a save dialog -- pick THIS
+       same file and confirm "replace"; after that every edit is written to
+       the file automatically for the rest of the session.
+     - Other browsers / phones: it downloads an updated copy to replace the
+       original with. */
+function serializeData(){
+  return JSON.stringify({ v:1, store: store, overrides: overrides }).replace(/</g, '\\u003c');
+}
+function syncSnapshot(){
+  if(embeddedEl) embeddedEl.textContent = serializeData();
+}
+
+let dirty = false, changeRev = 0, fileHandle = null, saveTimer = null, saving = false;
+
+function setSaveStatus(msg){
+  const el = document.getElementById('saveStatus');
+  if(!el) return;
+  if(msg){ el.textContent = msg; el.className = 'save-status ok only-offline'; return; }
+  if(saving){ el.textContent = '● Saving…'; el.className = 'save-status only-offline'; }
+  else if(dirty){
+    el.textContent = fileHandle ? '● Changes pending…' : '● Not saved to file yet — click “Save to file”';
+    el.className = 'save-status dirty only-offline';
+  } else { el.textContent = '● Saved in file'; el.className = 'save-status ok only-offline'; }
+}
+
+function markDirty(){
+  dirty = true; changeRev++;
+  syncSnapshot();
+  setSaveStatus();
+  if(fileHandle){ clearTimeout(saveTimer); saveTimer = setTimeout(writeToHandle, 400); }
+}
+
+// Full, clean HTML of this page with the current data embedded.
+function buildOfflineHtml(){
+  syncSnapshot();
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelector('#embeddedData').textContent = serializeData();
+  // Drop generated overlays and reset transient UI so the copy opens clean.
+  clone.querySelectorAll('#planWrap .hit, #planWrap .num-overlay, #planWrap .date-overlay, #planWrap .area-overlay, #planWrap .access-road-band')
+       .forEach(el => el.remove());
+  const pw = clone.querySelector('#planWrap'); if(pw) pw.removeAttribute('style');
+  ['timeline','editCalGrid','calGrid'].forEach(id => { const el = clone.querySelector('#' + id); if(el) el.innerHTML = ''; });
+  clone.querySelectorAll('.open').forEach(el => el.classList.remove('open'));
+  clone.classList.remove('offline');
+  const ec = clone.querySelector('#editCalPop'); if(ec) ec.style.display = 'none';
+  const zl = clone.querySelector('#zoomLabel'); if(zl) zl.textContent = '100%';
+  const st = clone.querySelector('#saveStatus');
+  if(st){ st.textContent = '● Saved in file'; st.className = 'save-status ok only-offline'; }
+  return '<!DOCTYPE html>\n' + clone.outerHTML;
+}
+
+function offlineFileName(){
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2,'0'), mm = String(d.getMonth()+1).padStart(2,'0');
+  return 'Pour_Concrete_Slab_' + dd + '_' + mm + '_' + d.getFullYear() + '_Offline.html';
+}
+
+function downloadHtml(name){
+  const blob = new Blob([buildOfflineHtml()], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function writeToHandle(){
+  if(!fileHandle) return;
+  if(saving){ clearTimeout(saveTimer); saveTimer = setTimeout(writeToHandle, 400); return; }
+  saving = true; setSaveStatus();
+  const myRev = changeRev;
+  try{
+    const w = await fileHandle.createWritable();
+    await w.write(new Blob([buildOfflineHtml()], {type:'text/html'}));
+    await w.close();
+    if(changeRev === myRev) dirty = false;
+    else { clearTimeout(saveTimer); saveTimer = setTimeout(writeToHandle, 400); }
+  }catch(err){
+    fileHandle = null;
+    alert('Could not write to the file: ' + (err && err.message ? err.message : err) +
+          '\nClick "Save to file" again.');
+  }
+  saving = false; setSaveStatus();
+}
+
+async function saveToFile(){
+  if(window.showSaveFilePicker){
+    try{
+      if(!fileHandle){
+        let name = 'pour-schedule.html';
+        try{ name = decodeURIComponent(location.pathname.split('/').pop()) || name; }catch(e){}
+        fileHandle = await window.showSaveFilePicker({
+          id: 'pour-schedule',
+          suggestedName: name,
+          types: [{ description:'HTML file', accept:{'text/html':['.html','.htm']} }]
+        });
+      }
+      await writeToHandle();
+      return;
+    }catch(err){
+      if(err && err.name === 'AbortError') return;   // user cancelled the dialog
+      fileHandle = null;                              // fall back to download
+    }
+  }
+  const myRev = changeRev;
+  let name = offlineFileName();
+  try{ name = decodeURIComponent(location.pathname.split('/').pop()) || name; }catch(e){}
+  downloadHtml(name);
+  if(changeRev === myRev) dirty = false;
+  setSaveStatus('● Downloaded — replace the original file with it');
+}
+
+document.getElementById('exportBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  saveToFile();
+});
+document.getElementById('offlineBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  downloadHtml(offlineFileName());
+  const lbl = e.currentTarget.querySelector('span');
+  if(lbl){
+    lbl.textContent = 'Offline copy downloaded';
+    setTimeout(() => { lbl.textContent = 'Save offline copy'; }, 2500);
+  }
+});
+window.addEventListener('beforeunload', (e) => {
+  if(OFFLINE && dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+if(OFFLINE){
+  // Data comes from #embeddedData; no Firebase, no browser storage.
+  renderPlan();
+  updateTotal();
+  refreshOpenModalIfAny();
+  setSaveStatus();
+} else {
+  syncSnapshot();
+  initFirebaseSync();
+}
 
 </script>
 </body>
