@@ -1105,6 +1105,20 @@ function renderAccessRoad(wrapRect){
   const slot = r.w / r.repeats;                       // width of one "ACCESS ROAD" label
   const fpx = parseFloat(boxFontPx(wrapRect, slot, r.h, 0.6, 8));  // same label size on every strip
   const tiny = fpx < 9;
+  // The dashed edge lines and diagonal hatch are fixed-px in the stylesheet;
+  // scale them with the plan so they stay in proportion on small screens.
+  const ps = planScale(wrapRect);
+  const edgePx = Math.max(0.5, 2 * ps);
+  const stripePx = Math.max(2, 14 * ps);
+  // Edge dashes are drawn as gradient layers (not CSS borders): browsers snap
+  // border widths to whole device pixels, so a border can't shrink smoothly.
+  const dash = 3 * edgePx, period = 5 * edgePx;
+  const dashLayer = 'linear-gradient(90deg, rgba(255,255,255,.9) 0 ' + dash + 'px, transparent ' + dash + 'px ' + period + 'px)';
+  const hatch = 'repeating-linear-gradient(135deg, rgba(66,160,72,.55) 0 ' + stripePx + 'px, rgba(46,125,50,.55) ' + stripePx + 'px ' + (2 * stripePx) + 'px)';
+  const bgImage = dashLayer + ',' + dashLayer + ',' + hatch;
+  const bgSize = period + 'px ' + edgePx + 'px,' + period + 'px ' + edgePx + 'px,auto';
+  const bgRepeat = 'repeat-x,repeat-x,repeat';
+  const bgPos = '0 0,0 100%,0 0';
   segs.forEach(([a, b]) => {
     const w = b - a;
     if(w < 0.8) return;                               // ignore slivers (expansion-joint gaps)
@@ -1116,6 +1130,11 @@ function renderAccessRoad(wrapRect){
     el.style.width = w + '%';
     el.style.height = r.h + '%';
     el.style.fontSize = (tiny ? SAFE_FONT_PX : fpx) + 'px';
+    el.style.border = '0';
+    el.style.backgroundImage = bgImage;
+    el.style.backgroundSize = bgSize;
+    el.style.backgroundRepeat = bgRepeat;
+    el.style.backgroundPosition = bgPos;
     const n = Math.max(w >= slot * 0.7 ? 1 : 0, Math.round(w / slot));
     for(let i = 0; i < n; i++){
       const label = document.createElement('span');
