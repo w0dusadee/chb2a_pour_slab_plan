@@ -74,6 +74,16 @@
   /* Mode-specific controls: the page runs either ONLINE (Firebase sync) or
      OFFLINE (data embedded in the file itself). <html class="offline"> is
      set at load when the file carries embedded data. */
+  /* Visit counter -- pinned to the header's top-right corner */
+  .view-counter{
+    position:absolute; top:8px; right:14px; z-index:101;
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:11px; color:#c7d3e2; white-space:nowrap;
+    background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.18);
+    border-radius:12px; padding:3px 10px;
+  }
+  .view-counter b{ color:#f5e07a; font-size:12px; font-variant-numeric:tabular-nums; }
+  .view-counter .vc-ico{ font-size:12px; opacity:.85; }
   .only-offline{ display:none !important; }
   html.offline .only-offline{ display:flex !important; }
   html.offline span.only-offline{ display:inline-block !important; }
@@ -456,6 +466,10 @@
      pixel sizes on a 360-430px wide phone. */
   @media (max-width:640px){
     header{ padding:8px 10px 8px; }
+    .view-counter{ top:6px; right:8px; font-size:clamp(8.5px,2.4vw,11px); padding:2px 8px; gap:4px; }
+    .view-counter b{ font-size:clamp(9px,2.7vw,12px); }
+    .view-counter .vc-ico{ font-size:clamp(9px,2.6vw,12px); }
+    header .eyebrow{ padding-right:clamp(80px,23vw,100px); margin-bottom:8px; }
     .eyebrow{ font-size:clamp(7.5px,2.2vw,10px); letter-spacing:.08em; margin-bottom:2px; }
     h1{ font-size:clamp(11px,3.4vw,16px); line-height:1.25; }
     .toolbar{ gap:6px 10px; margin-top:6px; }
@@ -509,6 +523,9 @@
 <body>
 
 <header>
+  <div class="view-counter only-online" id="viewCounter" title="Total number of visits to this page">
+    <span class="vc-ico">&#128065;</span><span>Views</span><b id="viewCount">&mdash;</b>
+  </div>
   <p class="eyebrow">CHB2A &middot; DOLPHIN &middot; SHOP DRAWING S-DCH-2200A-2.0</p>
   <h1>Concrete Pour Schedule &mdash; Ground Floor General Arrangement (FSA&ndash;DCH)</h1>
   <div class="toolbar">
@@ -668,9 +685,10 @@ async function loadFirebase(){
   const app = appMod.initializeApp(firebaseConfig);
   const db = dbMod.getDatabase(app);
   return {
-    set: dbMod.set, get: dbMod.get, onValue: dbMod.onValue,
+    set: dbMod.set, get: dbMod.get, onValue: dbMod.onValue, increment: dbMod.increment,
     storeRef: dbMod.ref(db, 'progress'),
-    overridesRef: dbMod.ref(db, 'overrides')
+    overridesRef: dbMod.ref(db, 'overrides'),
+    viewsRef: dbMod.ref(db, 'views')
   };
 }
 
@@ -1674,9 +1692,33 @@ function refreshOpenModalIfAny(){
   renderTimeline(p, pourDate, store[currentModalPanel] || {});
 }
 
+/* ===================== Visit counter =====================
+   Online only. Each browser SESSION counts as one view (reloads, zooming and
+   other in-page actions don't inflate it): the first time a session loads the
+   page it adds 1 to the shared /views total in Firebase, and every open page
+   shows the live total at the header's top-right. */
+const VIEW_SESSION_KEY = 'chb2a_view_counted';
+let viewCountedThisLoad = false;
+function startViewCounter(){
+  if(!fb || !fb.viewsRef) return;
+  let alreadyCounted = viewCountedThisLoad;
+  try{ alreadyCounted = alreadyCounted || sessionStorage.getItem(VIEW_SESSION_KEY) === '1'; }catch(e){}
+  if(!alreadyCounted){
+    viewCountedThisLoad = true;
+    try{ sessionStorage.setItem(VIEW_SESSION_KEY, '1'); }catch(e){}
+    fb.set(fb.viewsRef, fb.increment(1)).catch(err => console.error('View counter write failed:', err));
+  }
+  fb.onValue(fb.viewsRef, (snap) => {
+    const n = Number(snap.val()) || 0;
+    const el = document.getElementById('viewCount');
+    if(el) el.textContent = n.toLocaleString('en-US');
+  });
+}
+
 async function initFirebaseSync(){
   try{
     fb = await loadFirebase();
+    startViewCounter();
     const [storeSnap, ovrSnap] = await Promise.all([fb.get(fb.storeRef), fb.get(fb.overridesRef)]);
 
     if(storeSnap.exists()){
