@@ -361,6 +361,172 @@
     letter-spacing:.04em;
   }
 
+  /* Weekly progress report */
+  #progressTotal{ cursor:pointer; transition:background .15s, border-color .15s, box-shadow .15s; }
+  #progressTotal:hover, #progressTotal:focus-visible{
+    background:rgba(255,255,255,.1); border-color:#f5e07a; outline:none;
+    box-shadow:0 0 0 2px rgba(245,224,122,.25);
+  }
+  .progress-total .report-hint{
+    font-size:.82em; color:#9fb4d0; letter-spacing:.02em; margin-top:1px;
+  }
+  .progress-total:hover .report-hint{ color:#f5e07a; }
+
+  .rpt-overlay{ padding:16px; }
+  .rpt{
+    --r-navy:#0b2440; --r-navy2:#123258; --r-ink:#16263b; --r-muted:#667788;
+    --r-line:#dde4ec; --r-bg:#eef2f7; --r-card:#ffffff;
+    --r-plan:#d6342a; --r-act:#1f9d57; --r-act2:#13763f; --r-gold:#e0b92f; --r-blue:#2f6fd0;
+    font-family:'Segoe UI','IBM Plex Sans',system-ui,-apple-system,'Noto Sans Thai',Tahoma,sans-serif;
+    width:min(1220px,100%); max-height:96vh; overflow:auto;
+    background:var(--r-bg); color:var(--r-ink); border-radius:14px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5);
+    font-variant-numeric:tabular-nums;
+  }
+  .rpt *{ box-sizing:border-box; }
+  .rpt-head{
+    position:sticky; top:0; z-index:5;
+    background:linear-gradient(135deg,var(--r-navy) 0%,var(--r-navy2) 60%,#1a4577 100%);
+    color:#fff; padding:16px 24px 14px; border-bottom:4px solid var(--r-gold);
+    display:flex; gap:18px; align-items:flex-start; justify-content:space-between;
+  }
+  .rpt-eyebrow{ font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:#9fb9e6; font-weight:600; }
+  .rpt-head h2{ margin:3px 0 4px; font-size:23px; font-weight:700; letter-spacing:.005em; line-height:1.2; }
+  .rpt-sub{ font-size:13px; color:#cfdcf0; line-height:1.5; }
+  .rpt-sub b{ color:#f5e07a; font-weight:600; }
+  .rpt-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .rpt-actions button{
+    font:inherit; font-size:13px; cursor:pointer; color:#fff; line-height:1;
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.28);
+    border-radius:8px; padding:9px 13px;
+  }
+  .rpt-actions button:hover{ background:rgba(255,255,255,.2); }
+  .rpt-actions #rptClose{ font-size:22px; padding:5px 12px 7px; }
+  .rpt-body{ padding:18px 22px 22px; display:flex; flex-direction:column; gap:16px; }
+
+  .rpt-kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  .rpt-kpi{
+    background:var(--r-card); border-radius:12px; padding:13px 16px 14px;
+    border:1px solid var(--r-line); border-left:6px solid var(--kc,#2f6fd0);
+    box-shadow:0 2px 8px rgba(11,36,64,.06);
+  }
+  .rpt-kpi .k-label{ font-size:12px; font-weight:600; color:var(--r-muted); text-transform:uppercase; letter-spacing:.08em; }
+  .rpt-kpi .k-value{ font-size:29px; font-weight:700; margin:3px 0 2px; color:var(--kc,#2f6fd0); line-height:1.15; white-space:nowrap; }
+  .rpt-kpi .k-value small{ font-size:14px; font-weight:600; color:var(--r-muted); margin-left:4px; }
+  .rpt-kpi .k-sub{ font-size:12.5px; color:var(--r-muted); line-height:1.4; }
+  .rpt-kpi .k-bar{ height:8px; border-radius:6px; background:#e4eaf1; overflow:hidden; margin:6px 0 6px; }
+  .rpt-kpi .k-bar i{ display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,#2f6fd0,#4f95f0); }
+  .rpt-chip{
+    display:inline-block; font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px;
+    color:#fff; background:var(--cc,#1f9d57); letter-spacing:.02em; vertical-align:middle;
+  }
+
+  .rpt-main{ display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:14px; align-items:start; }
+  .rpt-card{
+    background:var(--r-card); border:1px solid var(--r-line); border-radius:12px;
+    box-shadow:0 2px 8px rgba(11,36,64,.06); padding:14px 16px 16px; min-width:0;
+  }
+  .rpt-card h3{
+    margin:0 0 10px; font-size:14px; font-weight:700; color:var(--r-navy);
+    letter-spacing:.04em; text-transform:uppercase; display:flex; align-items:center; gap:8px;
+  }
+  .rpt-card h3::before{ content:''; width:5px; height:16px; border-radius:3px; background:var(--r-gold); }
+  .rpt-card h3 .h3-note{ margin-left:auto; font-size:11.5px; font-weight:500; text-transform:none; letter-spacing:0; color:var(--r-muted); }
+  #rptChart{ width:100%; }
+  #rptChart svg{ display:block; width:100%; height:auto; }
+  .rpt-side{ display:flex; flex-direction:column; gap:14px; }
+
+  .rpt-sum-row{
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+    padding:9px 0; border-bottom:1px dashed var(--r-line); font-size:14px;
+  }
+  .rpt-sum-row:last-child{ border-bottom:none; }
+  .rpt-sum-row span{ color:#33475c; }
+  .rpt-sum-row b{ font-size:17px; color:var(--r-navy); white-space:nowrap; }
+  .rpt-sum-row b small{ font-size:11.5px; font-weight:500; color:var(--r-muted); margin-left:3px; }
+  .rpt-sum-row.hl{ background:linear-gradient(90deg,rgba(31,157,87,.12),rgba(31,157,87,0)); margin:0 -8px; padding:9px 8px; border-radius:6px; border-bottom:none; }
+  .rpt-sum-row.hl b{ color:var(--r-act2); }
+  .rpt-sum-row.tot b{ color:var(--r-blue); }
+  .rpt-sum-sep{ height:2px; background:var(--r-line); margin:4px 0; border-radius:2px; }
+  .rpt-sum-row.pos b{ color:var(--r-act2); }
+  .rpt-sum-row.neg b{ color:var(--r-plan); }
+
+  .rpt-sym{ display:flex; align-items:center; gap:10px; padding:5px 0; font-size:14px; }
+  .rpt-sym i{ display:inline-block; flex-shrink:0; }
+  .rpt-sym .s-plan{ width:34px; height:0; border-top:4px solid var(--r-plan); border-radius:2px; }
+  .rpt-sym .s-act{ width:18px; height:18px; border-radius:3px; background:linear-gradient(180deg,#38b46b,#1f9d57); border:2px solid #13763f; margin:0 8px; }
+  .rpt-sym .s-week{ width:34px; height:16px; border-radius:3px; background:rgba(245,224,122,.55); border:1px solid #d9bd3a; }
+  .rpt-sym .s-today{ width:34px; height:0; border-top:2px dashed #52647a; }
+  .rpt-note{ font-size:11.5px; color:var(--r-muted); line-height:1.5; margin-top:8px; padding-top:8px; border-top:1px dashed var(--r-line); }
+
+  .rpt-tbl-wrap{ overflow-x:auto; }
+  .rpt-tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:13.5px; min-width:640px; }
+  .rpt-tbl th{
+    background:var(--r-navy); color:#fff; font-weight:600; font-size:12px; letter-spacing:.05em;
+    text-transform:uppercase; padding:9px 10px; text-align:right; white-space:nowrap;
+  }
+  .rpt-tbl th:first-child{ border-radius:8px 0 0 0; } .rpt-tbl th:last-child{ border-radius:0 8px 0 0; }
+  .rpt-tbl th.l, .rpt-tbl td.l{ text-align:left; }
+  .rpt-tbl td{ padding:8px 10px; text-align:right; border-bottom:1px solid var(--r-line); white-space:nowrap; }
+  .rpt-tbl tr.cur td{ background:rgba(245,224,122,.35); font-weight:700; }
+  .rpt-tbl tr.fut td{ color:#8a97a6; }
+  .rpt-tbl td.pos{ color:var(--r-act2); font-weight:700; } .rpt-tbl td.neg{ color:var(--r-plan); font-weight:700; }
+  .rpt-tbl .now{ display:inline-block; font-size:10.5px; background:var(--r-navy); color:#f5e07a; padding:1px 7px; border-radius:10px; margin-left:6px; vertical-align:middle; }
+  .rpt-tbl .pbar{ display:inline-block; width:64px; height:7px; border-radius:5px; background:#e4eaf1; vertical-align:middle; margin-left:8px; overflow:hidden; }
+  .rpt-tbl .pbar i{ display:block; height:100%; background:var(--r-act); }
+
+  .rpt-two{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .rpt-chips{ display:flex; flex-wrap:wrap; gap:7px; }
+  .rpt-pc{
+    font-size:13px; padding:5px 11px; border-radius:8px; border:1px solid var(--r-line);
+    background:#f6f8fb; color:#27394d; white-space:nowrap;
+  }
+  .rpt-pc b{ color:var(--r-navy); }
+  .rpt-pc.ok{ background:#e5f6ec; border-color:#a9dcc0; color:#145c34; }
+  .rpt-pc.late{ background:#fdeceb; border-color:#f1b3ae; color:#8f2018; }
+  .rpt-empty{ font-size:13.5px; color:var(--r-muted); }
+  .rpt-foot{ font-size:11.5px; color:var(--r-muted); text-align:center; line-height:1.5; }
+
+  @media (max-width:980px){
+    .rpt-main{ grid-template-columns:1fr; }
+    .rpt-two{ grid-template-columns:1fr; }
+  }
+  @media (max-width:640px){
+    .rpt-overlay{ padding:6px; }
+    .rpt{ max-height:98vh; border-radius:10px; }
+    .rpt-head{ padding:12px 12px 10px; gap:8px; }
+    .rpt-head h2{ font-size:clamp(15px,4.6vw,19px); }
+    .rpt-eyebrow{ font-size:9.5px; }
+    .rpt-sub{ font-size:clamp(11px,3.1vw,12.5px); }
+    .rpt-actions button{ padding:7px 9px; font-size:12px; }
+    .rpt-actions .p-lbl{ display:none; }
+    .rpt-body{ padding:10px 10px 16px; gap:11px; }
+    .rpt-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .rpt-kpis .rpt-kpi:last-child{ grid-column:1 / -1; }
+    .rpt-kpi{ min-width:0; }
+    .rpt-kpi{ padding:10px 11px 11px; border-left-width:5px; }
+    .rpt-kpi .k-label{ font-size:10.5px; letter-spacing:.04em; }
+    .rpt-kpi .k-value{ font-size:clamp(17px,5.2vw,22px); white-space:normal; }
+    .rpt-kpi .k-value small{ font-size:11px; margin-left:3px; }
+    .rpt-kpi .k-sub{ font-size:11.5px; }
+    .rpt-card{ padding:11px 11px 13px; }
+    .rpt-card h3{ font-size:12.5px; }
+    .rpt-card h3 .h3-note{ display:none; }
+    .rpt-sum-row{ font-size:13px; } .rpt-sum-row b{ font-size:15.5px; }
+  }
+
+  @media print{
+    @page{ size:A4 landscape; margin:9mm; }
+    body > *:not(#reportOverlay){ display:none !important; }
+    body{ background:#fff !important; display:block !important; }
+    #reportOverlay{ position:static !important; display:block !important; background:none !important; padding:0 !important; }
+    .rpt{ max-height:none !important; overflow:visible !important; box-shadow:none !important; width:100% !important; }
+    .rpt-head{ position:static !important; }
+    .rpt-actions{ display:none !important; }
+    .rpt, .rpt *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .rpt-card, .rpt-kpi{ break-inside:avoid; box-shadow:none !important; }
+  }
+
   /* Modal */
   .overlay{
     position:fixed; inset:0; background:rgba(11,36,64,.6);
@@ -553,10 +719,11 @@
       <span class="cal-ico">&#128190;</span>
     </button>
     <span class="save-status ok only-offline" id="saveStatus">&#9679; Saved in file</span>
-    <div class="progress-total" id="progressTotal">
+    <div class="progress-total" id="progressTotal" role="button" tabindex="0" title="Click to open the weekly progress report" aria-label="Open weekly progress report">
       <span class="tasks-line">Total progress: 0 / 280 tasks</span>
       <span class="volume-line" id="progressVolume">0.00 / 0.00 cu.m.</span>
       <span class="volume-line" id="progressArea">0.00 / 0.00 sq.m. (0.00%)</span>
+      <span class="report-hint">&#128200; Weekly report &rsaquo;</span>
     </div>
   </div>
 </header>
@@ -619,6 +786,51 @@
 
     <div class="timeline" id="timeline"></div>
     <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<div class="overlay rpt-overlay" id="reportOverlay">
+  <div class="rpt" role="dialog" aria-modal="true" aria-labelledby="rptTitle">
+    <div class="rpt-head">
+      <div>
+        <div class="rpt-eyebrow" id="rptEyebrow">Weekly Progress Report</div>
+        <h2 id="rptTitle">Concrete Pour &mdash; Slab Progress</h2>
+        <div class="rpt-sub" id="rptSub"></div>
+      </div>
+      <div class="rpt-actions">
+        <button id="rptPrint" type="button" title="Print or save as PDF">&#128438; <span class="p-lbl">Print / PDF</span></button>
+        <button id="rptClose" type="button" aria-label="Close">&times;</button>
+      </div>
+    </div>
+    <div class="rpt-body">
+      <div class="rpt-kpis" id="rptKpis"></div>
+      <div class="rpt-main">
+        <section class="rpt-card">
+          <h3>Cumulative pour area <span class="h3-note">sq.m. &middot; by week</span></h3>
+          <div id="rptChart"></div>
+        </section>
+        <div class="rpt-side">
+          <section class="rpt-card" id="rptSummary"></section>
+          <section class="rpt-card">
+            <h3>Symbols</h3>
+            <div class="rpt-sym"><i class="s-plan"></i><span>Plan (cumulative)</span></div>
+            <div class="rpt-sym"><i class="s-act"></i><span>Progress (poured)</span></div>
+            <div class="rpt-sym"><i class="s-week"></i><span>Current week</span></div>
+            <div class="rpt-sym"><i class="s-today"></i><span>Today</span></div>
+            <div class="rpt-note" id="rptNote"></div>
+          </section>
+        </div>
+      </div>
+      <section class="rpt-card">
+        <h3>Weekly schedule &amp; progress <span class="h3-note">sq.m.</span></h3>
+        <div class="rpt-tbl-wrap"><table class="rpt-tbl" id="rptTable"></table></div>
+      </section>
+      <div class="rpt-two">
+        <section class="rpt-card"><h3>Panels planned this week</h3><div class="rpt-chips" id="rptWeekPanels"></div></section>
+        <section class="rpt-card"><h3>Overdue &mdash; not yet poured</h3><div class="rpt-chips" id="rptLate"></div></section>
+      </div>
+      <div class="rpt-foot" id="rptFoot"></div>
+    </div>
   </div>
 </div>
 
@@ -1285,6 +1497,7 @@ function updateTotal(){
     const pct = totalArea > 0 ? (pouredArea / totalArea * 100) : 0;
     areaEl.textContent = formatArea(pouredArea) + ' / ' + formatArea(totalArea) + ' sq.m. (' + pct.toFixed(2) + '%)';
   }
+  if(typeof refreshReportIfOpen === 'function') refreshReportIfOpen();
 }
 
 function refreshPanelVisual(num){
@@ -1442,6 +1655,7 @@ document.getElementById('overlay').addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if(e.key === 'Escape'){
+    closeReport();
     document.getElementById('overlay').classList.remove('open');
     document.getElementById('calPop').classList.remove('open');
     document.getElementById('editCalPop').style.display = 'none';
@@ -1481,6 +1695,300 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
   };
   if(!unlockedState.task){ requestUnlock('task', doClearStep); } else { doClearStep(); }
 });
+
+/* ===================== Weekly progress report ===================== */
+// Reporting calendar: weeks run Saturday to Friday (progress cut-off on Friday).
+// Week 1 = Sat 10 Oct - Fri 16 Oct 2026; week 9 ends Fri 11 Dec 2026.
+const RPT_START = new Date(2026, 9, 10);
+const RPT_WEEKS = 9;
+const RPT_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let reportOpen = false;
+
+function rptIdx(date){ return Math.round((new Date(date.getFullYear(),date.getMonth(),date.getDate()) - RPT_START) / 86400000); }
+function rptDate(i){ return new Date(RPT_START.getFullYear(), RPT_START.getMonth(), RPT_START.getDate() + i); }
+function rptDM(i){ const d = rptDate(i); return d.getDate() + '/' + (d.getMonth()+1); }
+function rptRange(a, b){
+  const da = rptDate(a), db = rptDate(b);
+  if(da.getMonth() === db.getMonth()) return da.getDate() + '–' + db.getDate() + ' ' + RPT_MON[db.getMonth()];
+  return da.getDate() + ' ' + RPT_MON[da.getMonth()] + ' – ' + db.getDate() + ' ' + RPT_MON[db.getMonth()];
+}
+function rN0(n){ return Math.round(n).toLocaleString('en-US'); }
+function rN2(n){ return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function rSign2(n){ return (n > 0.004 ? '+' : n < -0.004 ? '−' : '') + rN2(Math.abs(n)); }
+function rEsc(t){ return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// Plan = every panel at its CURRENT scheduled pour date (edited dates included).
+// Progress = panels whose "Concrete Pour" step is ticked. The app stores no
+// tick timestamps, so a poured panel is counted on its scheduled pour date
+// (or today, if it was ticked ahead of schedule).
+function rptCompute(){
+  const pourKey = STAGES[STAGES.length - 1].key;
+  const todayIdx = rptIdx(refDate);
+  const rows = panels.filter(p => p.area != null).map(p => {
+    const rec = store[p.num] || {};
+    const pi = rptIdx(effectivePourDate(p));
+    const poured = !!rec[pourKey];
+    return {p, area:p.area, planIdx:pi, poured, actIdx: poured ? Math.min(pi, todayIdx) : null};
+  });
+  const total = rows.reduce((a,r) => a + r.area, 0);
+  const planAt = i => rows.reduce((a,r) => a + (r.planIdx <= i ? r.area : 0), 0);
+  const actAt  = i => rows.reduce((a,r) => a + (r.poured && r.actIdx <= i ? r.area : 0), 0);
+  const lastIdx = 7 * RPT_WEEKS - 1;
+  let cw = Math.floor(todayIdx / 7) + 1;
+  const before = todayIdx < 0, after = todayIdx > lastIdx;
+  cw = Math.min(RPT_WEEKS, Math.max(1, cw));
+  const weeks = [];
+  for(let k = 1; k <= RPT_WEEKS; k++){
+    const a = 7*(k-1), b = 7*k - 1;
+    weeks.push({k, a, b, planCum: planAt(b), planPrev: planAt(a-1), actCum: null, status: k < cw ? 'past' : k === cw ? 'cur' : 'fut'});
+  }
+  const accumNow = actAt(Infinity);
+  weeks.forEach(w => {
+    if(w.status === 'past') w.actCum = actAt(w.b);
+    else if(w.status === 'cur') w.actCum = accumNow;
+  });
+  if(before) weeks.forEach(w => { if(w.status !== 'fut') w.actCum = accumNow; });
+  const cur = weeks[cw-1];
+  const lastEnd = cur.a - 1;
+  const accumLast = cw === 1 ? actAt(-1) : actAt(lastEnd);
+  const planToDate = Math.min(planAt(Math.min(todayIdx, lastIdx)), total);
+  const planWeekEnd = cur.planCum;
+  const planLast = planAt(lastEnd);
+  return {rows, total, planAt, actAt, todayIdx, cw, cur, weeks, before, after, lastIdx,
+          accumNow, accumLast, progressWeek: accumNow - accumLast, planToDate, planWeekEnd, planLast,
+          variance: accumNow - planToDate, baseline: planAt(-1), pourKey};
+}
+
+function rptChartSvg(D, host){
+  const W = Math.max(300, Math.floor(host.clientWidth || 700));
+  const narrow = W < 560, wide = W >= 780;
+  const H = narrow ? 340 : Math.round(Math.min(540, Math.max(380, W * 0.56)));
+  const m = {l: narrow ? 46 : 72, r: narrow ? 14 : 30, t: 34, b: narrow ? 56 : 62};
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const x0 = -1, x1 = D.lastIdx;
+  const X = i => m.l + (i - x0) / (x1 - x0) * iw;
+  const step = narrow ? 10000 : 5000;
+  const yMax = Math.max(step, Math.ceil(D.total / 5000) * 5000);
+  const Y = v => m.t + ih - Math.min(v, yMax) / yMax * ih;
+  const f1 = v => v.toFixed(1);
+  const FONT = "font-family=\"'Segoe UI','IBM Plex Sans',system-ui,'Noto Sans Thai',Tahoma,sans-serif\"";
+  let g = '';
+  g += '<defs><linearGradient id="rptGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fb36a" stop-opacity=".62"/><stop offset="1" stop-color="#2fb36a" stop-opacity=".12"/></linearGradient>' +
+       '<filter id="rptSh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0b2440" flood-opacity=".25"/></filter></defs>';
+  g += '<rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="#fbfcfe" rx="4"/>';
+  // week bands
+  D.weeks.forEach(w => {
+    const xa = X(w.a - 1), xb = X(w.b);
+    const cur = w.k === D.cw && !D.after && !D.before || (D.after && w.k === RPT_WEEKS);
+    if(w.k % 2 === 0 && !cur) g += '<rect x="' + f1(xa) + '" y="' + m.t + '" width="' + f1(xb - xa) + '" height="' + ih + '" fill="#eef3f9" opacity=".75"/>';
+    if(cur) g += '<rect x="' + f1(xa) + '" y="' + m.t + '" width="' + f1(xb - xa) + '" height="' + ih + '" fill="#f5e07a" opacity=".42"/>' +
+                 '<text x="' + f1((xa + xb) / 2) + '" y="' + (m.t - 10) + '" text-anchor="middle" font-size="' + (narrow ? 10.5 : 12) + '" font-weight="700" fill="#8a6d00" ' + FONT + '>This week</text>';
+  });
+  // y grid + labels
+  for(let v = 0; v <= yMax + 0.1; v += step){
+    const y = Y(v);
+    g += '<line x1="' + m.l + '" x2="' + (m.l + iw) + '" y1="' + f1(y) + '" y2="' + f1(y) + '" stroke="' + (v === 0 ? '#8896a6' : '#d8e0ea') + '" stroke-width="' + (v === 0 ? 1.4 : 1) + '"/>';
+    g += '<text x="' + (m.l - 8) + '" y="' + f1(y + 4) + '" text-anchor="end" font-size="' + (narrow ? 10.5 : 12) + '" fill="#4a5b6e" ' + FONT + '>' + v.toLocaleString('en-US') + '</text>';
+  }
+  g += '<text transform="translate(' + (narrow ? 11 : 16) + ',' + f1(m.t + ih / 2) + ') rotate(-90)" text-anchor="middle" font-size="' + (narrow ? 10.5 : 12.5) + '" font-weight="600" fill="#33475c" ' + FONT + '>Area (sq.m.)</text>';
+  // total scope line
+  const yT = Y(D.total);
+  g += '<line x1="' + m.l + '" x2="' + (m.l + iw) + '" y1="' + f1(yT) + '" y2="' + f1(yT) + '" stroke="#7a8aa0" stroke-width="1.3" stroke-dasharray="6 5"/>';
+  g += '<text x="' + f1(m.l + iw * (narrow ? 0.5 : 0.52)) + '" y="' + f1(yT + 17) + '" text-anchor="middle" font-size="' + (narrow ? 10.5 : 12) + '" font-weight="600" fill="#52647a" ' + FONT + '>Total scope ' + rN2(D.total) + ' sq.m.</text>';
+  // x axis ticks / labels
+  const ticks = [{i:-1, top:rptDM(-1), bot:'Start'}].concat(D.weeks.map(w => ({i:w.b, top:rptDM(w.b), bot:'W' + w.k, k:w.k})));
+  ticks.forEach((t, n) => {
+    const x = X(t.i);
+    g += '<line x1="' + f1(x) + '" x2="' + f1(x) + '" y1="' + (m.t + ih) + '" y2="' + (m.t + ih + 5) + '" stroke="#8896a6"/>';
+    const skip = narrow && n > 0 && n % 2 === 0 && n !== ticks.length - 1;
+    if(skip) return;
+    const anchor = n === 0 ? 'start' : 'middle';
+    const lx = n === 0 ? Math.max(x - 4, 2) : x;
+    g += '<text x="' + f1(lx) + '" y="' + (m.t + ih + 20) + '" text-anchor="' + (n === 0 ? 'middle' : 'middle') + '" font-size="' + (narrow ? 10.5 : 12.5) + '" font-weight="600" fill="#26384d" ' + FONT + '>' + t.top + '</text>';
+    g += '<text x="' + f1(lx) + '" y="' + (m.t + ih + (narrow ? 33 : 36)) + '" text-anchor="middle" font-size="' + (narrow ? 9.5 : 11) + '" fill="#7a8a9c" ' + FONT + '>' + t.bot + '</text>';
+  });
+  g += '<text x="' + f1(m.l + iw / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="' + (narrow ? 10 : 11.5) + '" font-weight="600" fill="#33475c" ' + FONT + '>Date (end of week)</text>';
+
+  // plan vertices
+  const tIn = D.todayIdx >= 0 && D.todayIdx <= D.lastIdx;
+  const pIdx = [-1].concat(D.weeks.map(w => w.b));
+  if(tIn && pIdx.indexOf(D.todayIdx) < 0) pIdx.push(D.todayIdx);
+  pIdx.sort((a, b) => a - b);
+  const plan = pIdx.map(i => ({i, v: D.planAt(i)}));
+  // progress vertices
+  const aIdx = [-1];
+  D.weeks.forEach(w => { if(w.b < D.todayIdx && w.b <= D.lastIdx) aIdx.push(w.b); });
+  let tEnd = Math.min(D.todayIdx, D.lastIdx);
+  if(tEnd >= 0 && aIdx.indexOf(tEnd) < 0) aIdx.push(tEnd);
+  const act = aIdx.map(i => ({i, v: i >= tEnd && tEnd >= 0 ? D.accumNow : D.actAt(i)}));
+  if(D.before) act.length = 1, act[0].v = D.accumNow;
+
+  // progress area + line
+  if(act.length > 1){
+    let d = 'M' + f1(X(act[0].i)) + ',' + f1(Y(0));
+    act.forEach(a => { d += ' L' + f1(X(a.i)) + ',' + f1(Y(a.v)); });
+    d += ' L' + f1(X(act[act.length - 1].i)) + ',' + f1(Y(0)) + ' Z';
+    g += '<path d="' + d + '" fill="url(#rptGrad)"/>';
+    g += '<polyline fill="none" stroke="#17884b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" points="' +
+         act.map(a => f1(X(a.i)) + ',' + f1(Y(a.v))).join(' ') + '"/>';
+  }
+  // plan line
+  g += '<polyline fill="none" stroke="#d6342a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" points="' +
+       plan.map(a => f1(X(a.i)) + ',' + f1(Y(a.v))).join(' ') + '"/>';
+  // today line
+  if(tIn){
+    const xt = X(D.todayIdx);
+    g += '<line x1="' + f1(xt) + '" x2="' + f1(xt) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="#52647a" stroke-width="1.6" stroke-dasharray="5 4"/>';
+  }
+  // plan dots + labels
+  plan.forEach((a, n) => {
+    const isWeek = D.weeks.some(w => w.b === a.i) || a.i === -1;
+    if(!isWeek) return;
+    const x = X(a.i), y = Y(a.v);
+    g += '<circle cx="' + f1(x) + '" cy="' + f1(y) + '" r="' + (narrow ? 3.6 : 4.8) + '" fill="#fff" stroke="#d6342a" stroke-width="2.6"><title>Plan ' + rptDM(a.i) + ': ' + rN2(a.v) + ' sq.m.</title></circle>';
+    const showLbl = wide || (!narrow && n % 2 === 1 && false);
+    const isLast = n === plan.length - 1;
+    if((wide || (!narrow && (n % 2 === 0))) && a.v > 0){
+      const ax = isLast ? 'end' : 'middle';
+      g += '<text x="' + f1(x + (isLast ? 4 : 0)) + '" y="' + f1(y - 11) + '" text-anchor="' + ax + '" font-size="11.5" font-weight="700" fill="#b8271f" stroke="#fbfcfe" stroke-width="3" paint-order="stroke" ' + FONT + '>' + rN0(a.v) + '</text>';
+    }
+  });
+  // progress dots + labels
+  act.forEach((a, n) => {
+    const x = X(a.i), y = Y(a.v);
+    g += '<circle cx="' + f1(x) + '" cy="' + f1(y) + '" r="' + (narrow ? 3.8 : 5) + '" fill="#1f9d57" stroke="#fff" stroke-width="2"><title>Progress ' + rptDM(a.i) + ': ' + rN2(a.v) + ' sq.m.</title></circle>';
+    if((wide || (!narrow && n % 2 === 0)) && n < act.length - 1 && a.v > 0 && y < m.t + ih - 16){
+      g += '<text x="' + f1(x) + '" y="' + f1(y + 19) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0f6b38" ' + FONT + '>' + rN0(a.v) + '</text>';
+    }
+  });
+  // callout "actual / plan" at the latest point
+  if(act.length && tEnd >= 0){
+    const a = act[act.length - 1];
+    const xp = X(a.i), yp = Y(a.v);
+    const txt = rN0(D.accumNow) + ' / ' + rN0(D.planToDate);
+    const bw = Math.max(narrow ? 98 : 118, txt.length * (narrow ? 8 : 9.2) + 22), bh = narrow ? 40 : 46;
+    let bx = xp - bw - (narrow ? 8 : 46);
+    if(bx < m.l + 4) bx = Math.min(xp + 18, m.l + iw - bw - 2);
+    let by = yp - bh - (narrow ? 56 : 110);
+    if(by < m.t + 4) by = Math.min(yp + 30, m.t + ih - bh - 4);
+    const cx = Math.min(Math.max(xp, bx + 10), bx + bw - 10);
+    const cy = by + bh <= yp ? by + bh : by;
+    g += '<line x1="' + f1(cx) + '" y1="' + f1(cy) + '" x2="' + f1(xp) + '" y2="' + f1(yp) + '" stroke="#17884b" stroke-width="1.8"/>';
+    g += '<g filter="url(#rptSh)"><rect x="' + f1(bx) + '" y="' + f1(by) + '" width="' + bw + '" height="' + bh + '" rx="9" fill="#ffffff" stroke="#17884b" stroke-width="2"/></g>';
+    g += '<text x="' + f1(bx + bw / 2) + '" y="' + f1(by + (narrow ? 15 : 17)) + '" text-anchor="middle" font-size="' + (narrow ? 9.5 : 10.5) + '" font-weight="600" fill="#5c6b7a" ' + FONT + '>Progress / Plan &middot; ' + rptDM(Math.min(D.todayIdx, D.lastIdx)) + '</text>';
+    g += '<text x="' + f1(bx + bw / 2) + '" y="' + f1(by + (narrow ? 33 : 37)) + '" text-anchor="middle" font-size="' + (narrow ? 14 : 17) + '" font-weight="800" fill="#0f6b38" ' + FONT + '>' + txt + '</text>';
+  }
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Cumulative planned versus poured area by week">' + g + '</svg>';
+}
+
+function renderReport(){
+  const D = rptCompute();
+  const ref = fmtDDMMYYYY(refDate);
+  const proj = (document.title || '').split('|').map(x => x.trim()).filter(Boolean).join(' \u00b7 ');
+  const weekLbl = D.before ? 'Before week 1' : D.after ? 'Schedule ended (week ' + RPT_WEEKS + ')' : 'Week ' + D.cw + ' of ' + RPT_WEEKS;
+  document.getElementById('rptSub').innerHTML =
+    (proj ? rEsc(proj) + ' &middot; ' : '') + '<b>' + weekLbl + '</b> (' + rptRange(D.cur.a, D.cur.b) + ' ' + RPT_START.getFullYear() + ') &middot; as of <b>' + ref + '</b>';
+
+  const pct = D.total > 0 ? D.accumNow / D.total * 100 : 0;
+  const planPct = D.total > 0 ? D.planToDate / D.total * 100 : 0;
+  const v = D.variance, vTol = 0.5;
+  const behindPct = D.total > 0 ? -v / D.total * 100 : 0;
+  let vState = 'ok', vText = 'On plan', vColor = '#1f9d57';
+  if(v > vTol){ vState = 'ahead'; vText = 'Ahead of plan'; vColor = '#1f9d57'; }
+  else if(v < -vTol){ vState = 'behind'; vText = 'Behind plan'; vColor = behindPct > 5 ? '#d6342a' : '#e08a1e'; }
+  const nTotal = D.rows.length, nDone = D.rows.filter(r => r.poured).length;
+  const remain = D.total - D.accumNow;
+  const weeksLeft = D.after ? 0 : RPT_WEEKS - D.cw;
+  const planThisWeek = D.planWeekEnd - D.planLast;
+
+  document.getElementById('rptKpis').innerHTML =
+    '<div class="rpt-kpi" style="--kc:#2f6fd0"><div class="k-label">Overall progress</div><div class="k-value">' + pct.toFixed(2) + '%</div>' +
+      '<div class="k-bar"><i style="width:' + Math.min(100, pct).toFixed(2) + '%"></i></div>' +
+      '<div class="k-sub">' + rN2(D.accumNow) + ' of ' + rN2(D.total) + ' sq.m.<br>Plan to date ' + planPct.toFixed(2) + '%</div></div>' +
+    '<div class="rpt-kpi" style="--kc:#1f9d57"><div class="k-label">Progress this week</div><div class="k-value">' + rN2(D.progressWeek) + '<small>sq.m.</small></div>' +
+      '<div class="k-sub">Planned this week: ' + rN2(planThisWeek) + ' sq.m.<br>' + rptRange(D.cur.a, D.cur.b) + '</div></div>' +
+    '<div class="rpt-kpi" style="--kc:#0b2440"><div class="k-label">Accum. to this week</div><div class="k-value">' + rN2(D.accumNow) + '<small>sq.m.</small></div>' +
+      '<div class="k-sub">Plan to date: ' + rN2(D.planToDate) + ' sq.m.<br>' + nDone + ' of ' + nTotal + ' panels poured</div></div>' +
+    '<div class="rpt-kpi" style="--kc:' + vColor + '"><div class="k-label">Variance vs plan</div><div class="k-value">' + rSign2(v) + '<small>sq.m.</small></div>' +
+      '<div class="k-sub"><span class="rpt-chip" style="--cc:' + vColor + '">' + vText + '</span><br>' + (v < -vTol ? rN2(-v / D.total * 100) + '% of scope behind' : v > vTol ? rN2(v / D.total * 100) + '% of scope ahead' : 'Actual matches plan') + '</div></div>' +
+    '<div class="rpt-kpi" style="--kc:#8a5cc8"><div class="k-label">Remaining</div><div class="k-value">' + rN2(remain) + '<small>sq.m.</small></div>' +
+      '<div class="k-sub">' + (nTotal - nDone) + ' panels left<br>' + (D.after ? 'Schedule period ended' : weeksLeft + ' week' + (weeksLeft === 1 ? '' : 's') + ' to go (ends ' + rptDM(D.lastIdx) + ')') + '</div></div>';
+
+  document.getElementById('rptSummary').innerHTML =
+    '<h3>Summary</h3>' +
+    '<div class="rpt-sum-row"><span>Accum. to last week</span><b>' + rN2(D.accumLast) + '<small>sq.m.</small></b></div>' +
+    '<div class="rpt-sum-row hl"><span>Progress this week</span><b>' + rN2(D.progressWeek) + '<small>sq.m.</small></b></div>' +
+    '<div class="rpt-sum-row tot"><span>Accum. to this week</span><b>' + rN2(D.accumNow) + '<small>sq.m.</small></b></div>' +
+    '<div class="rpt-sum-sep"></div>' +
+    '<div class="rpt-sum-row"><span>Plan to date</span><b>' + rN2(D.planToDate) + '<small>sq.m.</small></b></div>' +
+    '<div class="rpt-sum-row ' + (v > vTol ? 'pos' : v < -vTol ? 'neg' : '') + '"><span>Variance</span><b>' + rSign2(v) + '<small>sq.m.</small></b></div>';
+
+  document.getElementById('rptNote').textContent =
+    'Plan uses each panel’s current scheduled pour date. Progress counts panels whose Concrete Pour step (step ' + STAGES.length + ') is ticked.';
+
+  // chart
+  const host = document.getElementById('rptChart');
+  host.innerHTML = rptChartSvg(D, host);
+
+  // table
+  let t = '<thead><tr><th class="l">Week</th><th class="l">Period</th><th>Plan this week</th><th>Plan cumulative</th><th>Actual cumulative</th><th>Variance</th><th class="l">Done</th></tr></thead><tbody>';
+  D.weeks.forEach(w => {
+    const cls = w.status === 'cur' ? 'cur' : w.status === 'fut' ? 'fut' : '';
+    const planCum = w.planCum;
+    let act = '—', vr = '—', vcls = '', bar = '';
+    if(w.actCum != null){
+      act = rN2(w.actCum);
+      const cmp = w.status === 'cur' ? D.planToDate : planCum;
+      const dv = w.actCum - cmp;
+      vr = rSign2(dv); vcls = dv > vTol ? 'pos' : dv < -vTol ? 'neg' : '';
+      bar = (D.total > 0 ? w.actCum / D.total * 100 : 0);
+    }
+    t += '<tr class="' + cls + '"><td class="l">W' + w.k + (w.status === 'cur' ? '<span class="now">NOW</span>' : '') + '</td>' +
+         '<td class="l">' + rptRange(w.a, w.b) + '</td>' +
+         '<td>' + rN2(planCum - w.planPrev) + '</td><td>' + rN2(planCum) + '</td><td>' + act + '</td><td class="' + vcls + '">' + vr + '</td>' +
+         '<td class="l">' + (bar === '' ? '—' : bar.toFixed(1) + '%<span class="pbar"><i style="width:' + Math.min(100, bar) + '%"></i></span>') + '</td></tr>';
+  });
+  t += '</tbody>';
+  document.getElementById('rptTable').innerHTML = t;
+
+  // panel chips
+  const tag = r => '<b>#' + (getRank(r.p.num) != null ? getRank(r.p.num) : r.p.num) + '</b> &middot; ' + rptDM(r.planIdx) + ' &middot; ' + rN0(r.area) + ' sq.m.';
+  const weekRows = D.rows.filter(r => r.planIdx >= D.cur.a && r.planIdx <= D.cur.b).sort((a, b) => a.planIdx - b.planIdx);
+  document.getElementById('rptWeekPanels').innerHTML = weekRows.length
+    ? weekRows.map(r => '<span class="rpt-pc ' + (r.poured ? 'ok' : '') + '">' + (r.poured ? '&#10003; ' : '') + tag(r) + '</span>').join('')
+    : '<span class="rpt-empty">No panels are scheduled to pour in this week.</span>';
+  const lateRows = D.rows.filter(r => !r.poured && r.planIdx < D.todayIdx).sort((a, b) => a.planIdx - b.planIdx);
+  document.getElementById('rptLate').innerHTML = lateRows.length
+    ? lateRows.map(r => '<span class="rpt-pc late">' + tag(r) + '</span>').join('')
+    : '<span class="rpt-empty">&#10003; No overdue pours &mdash; every panel scheduled before today is poured.</span>';
+
+  document.getElementById('rptFoot').textContent =
+    'Weeks run Saturday to Friday (progress cut-off on Friday): week 1 = ' + rptRange(0, 6) + ', week ' + RPT_WEEKS + ' = ' + rptRange(7 * RPT_WEEKS - 7, D.lastIdx) + ' ' + RPT_START.getFullYear() + '. Areas in sq.m.';
+}
+
+function openReport(){
+  document.getElementById('reportOverlay').classList.add('open');
+  reportOpen = true;
+  renderReport();
+  // second pass once the scrollbar / layout has settled so the chart fits exactly
+  requestAnimationFrame(() => { if(reportOpen) renderReport(); });
+}
+function closeReport(){
+  document.getElementById('reportOverlay').classList.remove('open');
+  reportOpen = false;
+}
+function refreshReportIfOpen(){ if(reportOpen) renderReport(); }
+
+(function(){
+  const box = document.getElementById('progressTotal');
+  box.addEventListener('click', openReport);
+  box.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openReport(); } });
+  document.getElementById('rptClose').addEventListener('click', closeReport);
+  document.getElementById('reportOverlay').addEventListener('click', e => { if(e.target.id === 'reportOverlay') closeReport(); });
+  document.getElementById('rptPrint').addEventListener('click', () => window.print());
+  let rz = null;
+  window.addEventListener('resize', () => { if(!reportOpen) return; clearTimeout(rz); rz = setTimeout(renderReport, 120); });
+})();
 
 /* ===================== Reference-date calendar picker ===================== */
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
