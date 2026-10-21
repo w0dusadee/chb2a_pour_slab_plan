@@ -84,6 +84,24 @@
   }
   .view-counter b{ color:#f5e07a; font-size:12px; font-variant-numeric:tabular-nums; }
   .view-counter .vc-ico{ font-size:12px; opacity:.85; }
+  .date-btn.attn{ box-shadow:0 0 0 2px #f0b878; animation:attnPulse 1.4s ease-in-out infinite; }
+  @keyframes attnPulse{ 0%,100%{ box-shadow:0 0 0 2px rgba(240,184,120,.95); } 50%{ box-shadow:0 0 0 5px rgba(240,184,120,.25); } }
+  .sync-banner{
+    position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:450;
+    max-width:min(760px, calc(100vw - 24px)); box-sizing:border-box;
+    display:none; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center;
+    background:#0b2440; color:var(--paper); border:1px solid rgba(255,255,255,.2);
+    border-left:5px solid #e0c94a; border-radius:6px; padding:10px 14px;
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.45;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+  }
+  .sync-banner.save{ border-left-color:#f0b878; }
+  .sync-banner.conflict{ border-left-color:#d1483a; }
+  .sync-banner button{
+    font:inherit; font-weight:700; cursor:pointer; color:#0b2440; background:#e0c94a;
+    border:none; border-radius:4px; padding:6px 12px;
+  }
+  .sync-banner button.alt{ background:transparent; color:var(--paper); border:1px solid rgba(255,255,255,.5); }
   .only-offline{ display:none !important; }
   html.offline .only-offline{ display:flex !important; }
   html.offline span.only-offline{ display:inline-block !important; }
@@ -516,15 +534,74 @@
   }
 
   @media print{
-    @page{ size:A4 landscape; margin:9mm; }
-    body > *:not(#reportOverlay){ display:none !important; }
-    body{ background:#fff !important; display:block !important; }
-    #reportOverlay{ position:static !important; display:block !important; background:none !important; padding:0 !important; }
+    /* margin:0 leaves the browser no margin box to print its own header/footer
+       (file address, date, page number) in; the visual margins come from the
+       body padding below instead. */
+    @page{ size:A4 landscape; margin:0; }
+    html{ background:#fff !important; }
+    #syncBanner{ display:none !important; }
+    body.print-report > *:not(#reportOverlay){ display:none !important; }
+    body.print-report{ background:#fff !important; display:block !important; padding:9mm !important; box-sizing:border-box; }
+    body.print-report #reportOverlay{ position:static !important; display:block !important; background:none !important; padding:0 !important; }
     .rpt{ max-height:none !important; overflow:visible !important; box-shadow:none !important; width:100% !important; }
     .rpt-head{ position:static !important; }
     .rpt-actions{ display:none !important; }
     .rpt, .rpt *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .rpt-card, .rpt-kpi{ break-inside:avoid; box-shadow:none !important; }
+    /* compact layout for paper (the print width can trip the narrow-screen rules) */
+    body.print-report .rpt{ background:#fff !important; }
+    body.print-report .rpt-body{ padding:10px 0 0; gap:9px; }
+    body.print-report .rpt-kpis{ grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+    body.print-report .rpt-kpi{ padding:7px 10px 8px; border-radius:8px; border-left-width:5px; }
+    body.print-report .rpt-kpi .k-label{ font-size:9.5px; }
+    body.print-report .rpt-kpi .k-value{ font-size:21px; margin:1px 0; }
+    body.print-report .rpt-kpi .k-value small{ font-size:11px; }
+    body.print-report .rpt-kpi .k-sub{ font-size:10px; line-height:1.3; }
+    body.print-report .rpt-kpis .rpt-kpi:last-child{ grid-column:auto; }
+    body.print-report .rpt-main{ grid-template-columns:minmax(0,1fr) 270px !important; gap:9px; }
+    body.print-report .rpt-two{ grid-template-columns:1fr 1fr !important; gap:9px; }
+    body.print-report .rpt-card{ padding:9px 12px 10px; border-radius:8px; }
+    body.print-report #rptChart svg{ max-height:300px; width:100%; }
+    body.print-report .rpt-tbl{ font-size:11px; }
+    body.print-report .rpt-tbl-wrap{ break-inside:avoid; }
+    body.print-report .rpt-pc{ font-size:10.5px; padding:3px 8px; }
+  }
+
+  /* Print plan: one A4 landscape page, only what a progress report needs */
+  .print-foot{ display:none; }
+  .symbols .cnt{ display:none; }
+  @media print{
+    html{ height:auto !important; }
+    body.print-plan{ background:#fff !important; display:block !important; height:auto !important; min-height:0 !important; color:#0b2440; padding:calc(9mm + 10px) 9mm 9mm; box-sizing:border-box; }
+    body.print-plan, body.print-plan *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    body.print-plan .overlay, body.print-plan .view-counter, body.print-plan .zoom-controls,
+    body.print-plan #offlineBtn, body.print-plan #exportBtn, body.print-plan #printPlanBtn, body.print-plan #saveStatus,
+    body.print-plan .cal-pop, body.print-plan .report-hint, body.print-plan .symbols .hint,
+    body.print-plan .date-btn .cal-ico{ display:none !important; }
+    body.print-plan header{ background:#fff; color:#0b2440; padding:0 0 12px; border-bottom:3px solid #e0c94a; position:relative; z-index:auto; }
+    body.print-plan header .eyebrow{ color:#4a68a8; font-size:10.5px; padding-right:0; margin-bottom:3px; }
+    body.print-plan h1{ font-size:17px; color:#0b2440; padding-right:340px; line-height:1.25; }
+    body.print-plan .toolbar{ margin-top:7px; gap:0; }
+    body.print-plan .date-btn{ background:none; border:none; padding:0; color:#33475c; font-size:12.5px; }
+    body.print-plan .date-btn b{ color:#0b2440; font-size:13px; }
+    body.print-plan .progress-total{ position:absolute; right:0; top:0; margin:0; background:#f7f4ea; border:1px solid #c9c2ab; border-left:4px solid #e0c94a; border-radius:3px; color:#0b2440; font-size:12px; padding:6px 12px; }
+    body.print-plan .progress-total .tasks-line{ font-weight:700; }
+    body.print-plan .progress-total .volume-line{ color:#14663a; }
+    body.print-plan .stage{ padding:20px 0 0; display:block; overflow:visible; flex:none; }
+    body.print-plan .plan-wrap{ box-shadow:none; border:1px solid #c9c2ab; border-radius:0; margin:0 auto; }
+    body.print-plan .symbols-bar{ padding:22px 0 0; }
+    body.print-plan .symbols{ background:none; color:#0b2440; border:none; border-radius:0; box-shadow:none; display:flex; align-items:stretch; gap:12px; padding:0; font-size:12.5px; }
+    body.print-plan .symbols h2{ color:#fff; background:#0b2440; border:none; margin:0; padding:0 16px; font-size:12.5px; border-radius:4px; display:flex; align-items:center; letter-spacing:.16em; }
+    body.print-plan .symbols .row{ flex:1; padding:12px 16px; border:1px solid #c9c2ab; border-left-width:5px; border-radius:4px; background:#fbfaf5; align-items:center; gap:0; }
+    body.print-plan .symbols .row:nth-of-type(1){ border-left-color:#8fc97a; }
+    body.print-plan .symbols .row:nth-of-type(2){ border-left-color:#e7a05a; }
+    body.print-plan .symbols .row:nth-of-type(3){ border-left-color:#d1483a; }
+    body.print-plan .symbols .row:nth-of-type(4){ border-left-color:#9aa0a8; }
+    body.print-plan .symbols .swatch{ width:15px; height:15px; margin-right:9px; }
+    body.print-plan .symbols .lbl{ line-height:1.25; }
+    body.print-plan .symbols .cnt{ display:block; margin-left:auto; padding-left:10px; font-size:22px; font-weight:700; color:#0b2440; line-height:1; text-align:right; }
+    body.print-plan .symbols .cnt small{ display:block; font-size:9.5px; font-weight:500; color:#667788; margin-top:2px; }
+    body.print-plan .print-foot{ display:block; margin-top:22px; padding-top:6px; border-top:1px solid #dcd6c3; font-size:10.5px; color:#667788; text-align:right; }
   }
 
   /* Modal */
@@ -710,7 +787,7 @@
         <div class="cal-foot"><button id="calToday">Jump to today</button></div>
       </div>
     </div>
-    <button class="date-btn only-online" id="offlineBtn" type="button" title="Download an OFFLINE copy of this page. Current progress and pour dates are written INTO the file; the copy never reads browser storage or Firebase.">
+    <button class="date-btn only-online" id="offlineBtn" type="button" title="Download an OFFLINE copy of this page. Current progress and pour dates are written INTO the file; when opened with internet it loads the latest online data and asks you to save the file.">
       <span>Save offline copy</span>
       <span class="cal-ico">&#128190;</span>
     </button>
@@ -718,9 +795,13 @@
       <span>Save to file</span>
       <span class="cal-ico">&#128190;</span>
     </button>
+    <button class="date-btn" id="printPlanBtn" type="button" title="Print the plan on one A4 landscape page (progress, dates and symbols only)">
+      <span>Print plan</span>
+      <span class="cal-ico">&#128424;</span>
+    </button>
     <span class="save-status ok only-offline" id="saveStatus">&#9679; Saved in file</span>
     <div class="progress-total" id="progressTotal" role="button" tabindex="0" title="Click to open the weekly progress report" aria-label="Open weekly progress report">
-      <span class="tasks-line">Total progress: 0 / 280 tasks</span>
+      <span class="tasks-line">Total progress: 0 / 360 tasks</span>
       <span class="volume-line" id="progressVolume">0.00 / 0.00 cu.m.</span>
       <span class="volume-line" id="progressArea">0.00 / 0.00 sq.m. (0.00%)</span>
       <span class="report-hint">&#128200; Weekly report &rsaquo;</span>
@@ -744,13 +825,15 @@
 <div class="symbols-bar">
   <div class="symbols" role="group" aria-label="Symbols">
     <h2>Symbols</h2>
-    <div class="row"><span class="swatch" style="background:#b9e0a8"></span>Steps on/ahead of schedule</div>
-    <div class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;6 overdue</div>
-    <div class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 7) overdue</div>
-    <div class="row"><span class="swatch" style="background:#c7cbd1"></span>All 7 steps complete</div>
+    <div class="row"><span class="swatch" style="background:#b9e0a8"></span><span class="lbl">Steps on/ahead of schedule</span><span class="cnt" data-st="green"></span></div>
+    <div class="row"><span class="swatch" style="background:#f0b878"></span><span class="lbl">Steps 1&ndash;8 overdue</span><span class="cnt" data-st="orange"></span></div>
+    <div class="row"><span class="swatch" style="background:#d1483a"></span><span class="lbl">Pour (step 9) overdue</span><span class="cnt" data-st="red"></span></div>
+    <div class="row"><span class="swatch" style="background:#c7cbd1"></span><span class="lbl">All 9 steps complete</span><span class="cnt" data-st="done"></span></div>
     <div class="hint">Click any panel to view details</div>
   </div>
 </div>
+
+<div class="print-foot" id="printFoot"></div>
 
 <div class="overlay" id="overlay">
   <div class="modal">
@@ -855,13 +938,17 @@
 
 <!-- Empty in the online page. An offline copy carries {"v":1,"store":{...},"overrides":{...}}
      here and, when this block is non-empty, the page runs fully offline. -->
+<div id="syncBanner" class="sync-banner" role="status"><span id="syncBannerMsg"></span><span id="syncBannerBtns" style="display:inline-flex;gap:8px;flex-wrap:wrap"></span></div>
+
 <script id="embeddedData" type="application/json"></script>
 
 <script type="module">
 /* ===================== Run mode: ONLINE or OFFLINE =====================
-   OFFLINE = the file carries its own data in #embeddedData. Nothing is read
-   from or written to browser storage and Firebase is never contacted; every
-   machine that opens the file sees exactly what was last saved into it.
+   OFFLINE = the file carries its own data in #embeddedData and works with no
+   internet. Nothing is written to browser storage or to Firebase. When the
+   file is opened WITH internet it reads (read-only) the latest online data
+   once; if that differs from the file, the file is updated and the user is
+   asked to save it (see syncOfflineFromCloud).
    ONLINE  = the normal hosted page: Firebase live sync + localStorage cache. */
 const embeddedEl = document.getElementById('embeddedData');
 function readEmbedded(){
@@ -874,6 +961,8 @@ function readEmbedded(){
 }
 const EMBEDDED = readEmbedded();
 const OFFLINE = EMBEDDED !== null;
+// Last online data this file is known to have matched (null for older files).
+let baseData = (EMBEDDED && EMBEDDED.base && typeof EMBEDDED.base === 'object') ? EMBEDDED.base : null;
 document.documentElement.classList.toggle('offline', OFFLINE);
 
 const firebaseConfig = {
@@ -976,6 +1065,8 @@ const ACCESS_ROAD = { l: 4.718, t: 43.092, w: 91.179, h: 4.013, repeats: 9 };
 // days counting back from the pour date (keys unchanged so old saved
 // progress still lines up with the right task).
 const STAGES = [
+  { key:'safetyNet',   offset:-8, label:'Safety Net Removal' },
+  { key:'soilCompact', offset:-7, label:'Existing Soil Compaction' },
   { key:'termite',   offset:-6, label:'Termite Spraying' },
   { key:'lean',      offset:-5, label:'Lean Concrete Pour' },
   { key:'formwork',  offset:-4, label:'Formwork & Damp Proof' },
@@ -997,7 +1088,7 @@ const STAGES = [
 // revised one; if the pour schedule is reshuffled again, re-check which
 // num this same physical panel (the 34,650x37,150 one) ends up with.
 const STAGE_OFFSET_OVERRIDES = {
-  3: { termite:-9, lean:-8, formwork:-6, rebarLow:-5, ground:-3, rebarUp:-2, pour:0 },
+  3: { safetyNet:-11, soilCompact:-10, termite:-9, lean:-8, formwork:-6, rebarLow:-5, ground:-3, rebarUp:-2, pour:0 },
 };
 function stageOffset(panelNum, stage){
   const ov = STAGE_OFFSET_OVERRIDES[panelNum];
@@ -1149,10 +1240,30 @@ function effectivePourDate(p){
   return parseDDMM(p.date, refDate.getFullYear());
 }
 
+// Progress saved BEFORE the two new tasks (Safety Net Removal, Existing Soil
+// Compaction) existed has no value for them. For such legacy records an
+// unsaved new task counts as done when any of the original 7 steps was
+// already ticked (those steps come later, so the earlier work was done).
+// The first edit of a panel writes the values out explicitly (_v9 flag), so
+// from then on every task, new or old, behaves independently.
+const NEW_STAGE_KEYS = ['safetyNet', 'soilCompact'];
+const LEGACY_STAGE_KEYS = ['termite', 'lean', 'formwork', 'rebarLow', 'ground', 'rebarUp', 'pour'];
+function tickOf(rec, key){
+  if(!rec) return false;
+  if(rec[key] !== undefined) return !!rec[key];
+  if(!rec._v9 && NEW_STAGE_KEYS.indexOf(key) >= 0) return LEGACY_STAGE_KEYS.some(k => rec[k] === true);
+  return false;
+}
+function materializeRec(r){
+  if(!r || r._v9) return;
+  NEW_STAGE_KEYS.forEach(k => { if(r[k] === undefined) r[k] = tickOf(r, k); });
+  r._v9 = true;
+}
+
 function panelProgress(num){
   const rec = store[num] || {};
   let done = 0;
-  STAGES.forEach(s => { if(rec[s.key]) done++; });
+  STAGES.forEach(s => { if(tickOf(rec, s.key)) done++; });
   return done;
 }
 
@@ -1169,7 +1280,7 @@ function panelStatus(p){
   let prepOverdue = false;
   STAGES.slice(0, -1).forEach(s => {
     const d = new Date(pourDate); d.setDate(d.getDate() + stageOffset(p.num, s));
-    if(!rec[s.key] && refDate > d) prepOverdue = true;
+    if(!tickOf(rec, s.key) && refDate > d) prepOverdue = true;
   });
   if(prepOverdue) return 'orange';
 
@@ -1177,7 +1288,7 @@ function panelStatus(p){
   // on-time or ahead of its own scheduled date (and nothing else is overdue).
   let aheadOfSchedule = false;
   STAGES.forEach(s => {
-    if(!rec[s.key]) return;
+    if(!tickOf(rec, s.key)) return;
     const d = new Date(pourDate); d.setDate(d.getDate() + stageOffset(p.num, s));
     if(refDate <= d) aheadOfSchedule = true;
   });
@@ -1556,7 +1667,7 @@ function openModal(num){
   renderTimeline(p, pourDate, rec);
 
   document.getElementById('modalFoot').textContent = OFFLINE
-    ? 'Check off each step, then press "Save to file" (progress is stored inside the file).'
+    ? 'Check off each step, then press "Save to file" (progress is stored inside the file; online data is loaded when internet is available).'
     : 'Check off each step to save progress (synced online and cached in this browser).';
 
   document.getElementById('overlay').classList.add('open');
@@ -1585,14 +1696,14 @@ function renderTimeline(p, pourDate, rec){
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
-    cb.checked = !!rec[stage.key];
+    cb.checked = !!tickOf(rec, stage.key);
 
     const textWrap = document.createElement('div');
     const lbl = document.createElement('div');
     lbl.className = 'label';
     lbl.textContent = stage.label;
     const dt = document.createElement('div');
-    const isOverdue = !rec[stage.key] && refDate > d;
+    const isOverdue = !tickOf(rec, stage.key) && refDate > d;
     dt.className = 'date' + (isOverdue ? ' overdue' : '');
     dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (isOverdue ? '  (overdue)' : '');
 
@@ -1605,6 +1716,7 @@ function renderTimeline(p, pourDate, rec){
       const isPourStage = (stage === STAGES[STAGES.length - 1]);
       if(isPourStage && cb.checked){
         STAGES.forEach(s => { store[p.num][s.key] = true; });
+        store[p.num]._v9 = true;
         saveStore(store);
         refreshPanelVisual(p.num);
         updateTotal();
@@ -1612,6 +1724,7 @@ function renderTimeline(p, pourDate, rec){
         return;
       }
 
+      materializeRec(store[p.num]);
       store[p.num][stage.key] = cb.checked;
       saveStore(store);
       refreshPanelVisual(p.num);
@@ -2185,6 +2298,44 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(() => { applyZoom(); }, 120);
 });
 
+/* ===================== Print plan / report =====================
+   beforeprint/afterprint cover both the Print button and Ctrl+P. If the
+   weekly report is open it is printed, otherwise the plan is printed on a
+   single A4 landscape page: the plan is re-rendered at a width that fits
+   the printable area (so the small panel text scales with it) and put back
+   to the on-screen zoom afterwards. */
+let planPrintSized = false;
+function preparePrint(){
+  const mode = (typeof reportOpen !== 'undefined' && reportOpen) ? 'report' : 'plan';
+  document.body.classList.add('print-' + mode);
+  if(mode !== 'plan') return;
+  const img = document.getElementById('planImg');
+  const aspect = (img.naturalWidth > 0) ? img.naturalHeight / img.naturalWidth : 0.39;
+  const PAGE_W = 1054, PAGE_H = 726, RESERVED = 185;   // A4 landscape minus 9mm margins, in CSS px
+  const w = Math.floor(Math.min(PAGE_W, (PAGE_H - RESERVED) / aspect));
+  const wrap = document.getElementById('planWrap');
+  wrap.style.maxWidth = 'none';
+  wrap.style.width = w + 'px';
+  planPrintSized = true;
+  renderPlan();
+  const cnt = {green:0, orange:0, red:0, done:0};
+  panels.forEach(pp => { const st = panelStatus(pp); if(cnt[st] !== undefined) cnt[st]++; });
+  document.querySelectorAll('.symbols .cnt').forEach(el => {
+    const n = cnt[el.dataset.st] || 0;
+    el.innerHTML = n + '<small>panel' + (n === 1 ? '' : 's') + '</small>';
+  });
+  const proj = (document.title || '').split('|')[0].trim();
+  document.getElementById('printFoot').textContent =
+    (proj ? proj + ' · ' : '') + 'Reference date ' + fmtDDMMYYYY(refDate) + ' · Printed ' + new Date().toLocaleString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function finishPrint(){
+  document.body.classList.remove('print-plan', 'print-report');
+  if(planPrintSized){ planPrintSized = false; applyZoom(); }
+}
+window.addEventListener('beforeprint', preparePrint);
+window.addEventListener('afterprint', finishPrint);
+document.getElementById('printPlanBtn').addEventListener('click', () => { window.print(); });
+
 /* ===================== Firebase cross-device sync =====================
    On load: if the cloud already has data, it wins (it's the shared source
    of truth). If the cloud is empty (brand-new database) but this browser
@@ -2282,8 +2433,22 @@ async function initFirebaseSync(){
        the file automatically for the rest of the session.
      - Other browsers / phones: it downloads an updated copy to replace the
        original with. */
+function canon(v){
+  if(v === null || v === undefined) return null;
+  if(Array.isArray(v)){ const o = {}; v.forEach((x, i) => { if(x !== null && x !== undefined) o[i] = x; }); v = o; }
+  if(typeof v === 'object'){
+    const out = {};
+    Object.keys(v).sort().forEach(k => { const c = canon(v[k]); if(c !== null) out[k] = c; });
+    return Object.keys(out).length ? out : null;
+  }
+  return v;
+}
+function eqData(a, b){ return JSON.stringify(canon(a) || {}) === JSON.stringify(canon(b) || {}); }
 function serializeData(){
-  return JSON.stringify({ v:1, store: store, overrides: overrides }).replace(/</g, '\\u003c');
+  const o = { v:1, store: store, overrides: overrides };
+  const base = OFFLINE ? baseData : { store: canon(store) || {}, overrides: canon(overrides) || {} };
+  if(base) o.base = base;
+  return JSON.stringify(o).replace(/</g, '\\u003c');
 }
 function syncSnapshot(){
   if(embeddedEl) embeddedEl.textContent = serializeData();
@@ -2291,9 +2456,32 @@ function syncSnapshot(){
 
 let dirty = false, changeRev = 0, fileHandle = null, saveTimer = null, saving = false;
 
+function showBanner(kind, msg, buttons, autoHideMs){
+  const b = document.getElementById('syncBanner'); if(!b) return;
+  b.className = 'sync-banner ' + kind; b.dataset.kind = kind;
+  document.getElementById('syncBannerMsg').textContent = msg;
+  const box = document.getElementById('syncBannerBtns'); box.innerHTML = '';
+  (buttons || []).forEach(def => {
+    const btn = document.createElement('button'); btn.type = 'button';
+    btn.textContent = def.label; if(def.alt) btn.className = 'alt';
+    btn.addEventListener('click', (e) => { e.stopPropagation(); def.fn(); });
+    box.appendChild(btn);
+  });
+  b.style.display = 'flex';
+  clearTimeout(showBanner.t);
+  if(autoHideMs) showBanner.t = setTimeout(hideBanner, autoHideMs);
+}
+function hideBanner(){
+  const b = document.getElementById('syncBanner'); if(!b) return;
+  b.style.display = 'none'; b.dataset.kind = '';
+}
 function setSaveStatus(msg){
   const el = document.getElementById('saveStatus');
   if(!el) return;
+  const eb = document.getElementById('exportBtn');
+  if(eb) eb.classList.toggle('attn', !!dirty && !saving);
+  const bn = document.getElementById('syncBanner');
+  if(!dirty && !saving && bn && bn.dataset.kind === 'save') hideBanner();
   if(msg){ el.textContent = msg; el.className = 'save-status ok only-offline'; return; }
   if(saving){ el.textContent = '● Saving…'; el.className = 'save-status only-offline'; }
   else if(dirty){
@@ -2325,6 +2513,9 @@ function buildOfflineHtml(){
   const zl = clone.querySelector('#zoomLabel'); if(zl) zl.textContent = '100%';
   const st = clone.querySelector('#saveStatus');
   if(st){ st.textContent = '● Saved in file'; st.className = 'save-status ok only-offline'; }
+  const eb2 = clone.querySelector('#exportBtn'); if(eb2) eb2.classList.remove('attn');
+  const sb = clone.querySelector('#syncBanner');
+  if(sb){ sb.removeAttribute('style'); sb.className = 'sync-banner'; sb.dataset.kind = ''; sb.querySelector('#syncBannerMsg').textContent = ''; sb.querySelector('#syncBannerBtns').innerHTML = ''; }
   return '<!DOCTYPE html>\n' + clone.outerHTML;
 }
 
@@ -2408,12 +2599,71 @@ window.addEventListener('beforeunload', (e) => {
   if(OFFLINE && dirty){ e.preventDefault(); e.returnValue = ''; }
 });
 
+/* ===================== OFFLINE file: refresh from the cloud =====================
+   Runs once when an offline file is opened. With no internet (or a blocked /
+   slow connection) it silently does nothing and the file's own data is used.
+   With internet it READS the shared online data (never writes to it):
+     - same as the file            -> nothing to do
+     - different, file has no edits of its own since it last matched the cloud
+                                    -> file takes the online data and the user
+                                       is told to SAVE the file
+     - file has its own offline edits AND the cloud changed too
+                                    -> user chooses which data to keep */
+function withTimeout(promise, ms){
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+}
+async function syncOfflineFromCloud(){
+  if(navigator.onLine === false) return;
+  let cloud;
+  try{
+    const f = await withTimeout(loadFirebase(), 12000);
+    const [a, b] = await withTimeout(Promise.all([f.get(f.storeRef), f.get(f.overridesRef)]), 12000);
+    if(!a.exists() && !b.exists()) return;          // empty cloud: never wipe the file
+    cloud = {
+      store: a.exists() ? (canon(a.val()) || {}) : (canon(store) || {}),
+      overrides: b.exists() ? (canon(b.val()) || {}) : (canon(overrides) || {})
+    };
+  }catch(err){
+    console.warn('Offline file: online data not reachable, using the data saved in the file.', err);
+    return;
+  }
+  const sameAsFile = eqData(cloud.store, store) && eqData(cloud.overrides, overrides);
+  if(sameAsFile){
+    baseData = cloud;
+    showBanner('info', 'Checked online data — this file is up to date.', [], 4000);
+    return;
+  }
+  const localEdited = !!baseData && !(eqData(baseData.store, store) && eqData(baseData.overrides, overrides));
+  const cloudMoved  = !baseData || !(eqData(baseData.store, cloud.store) && eqData(baseData.overrides, cloud.overrides));
+  const askSave = (msg) => showBanner('save', msg, [{ label:'Save to file', fn: saveToFile }]);
+  const adopt = () => {
+    store = cloud.store; overrides = cloud.overrides; baseData = cloud;
+    markDirty();
+    renderPlan(); updateTotal(); refreshOpenModalIfAny();
+    askSave('Data was updated from the internet. Please save the file so it keeps the new data.');
+  };
+  if(!localEdited){ adopt(); return; }
+  if(!cloudMoved){
+    showBanner('info', 'This file has offline edits that are not in the online data yet.', [], 8000);
+    return;
+  }
+  showBanner('conflict', 'The online data and this file both changed. Which data do you want to use?', [
+    { label:'Use online data', fn: adopt },
+    { label:'Keep file data', alt:true, fn: () => {
+        baseData = cloud; markDirty();
+        askSave('Kept the file data. Save the file to remember this choice.');
+    } }
+  ]);
+}
+
 if(OFFLINE){
-  // Data comes from #embeddedData; no Firebase, no browser storage.
+  // Data comes from #embeddedData first (works with no internet); then, if
+  // there is internet, the latest online data is read once (see above).
   renderPlan();
   updateTotal();
   refreshOpenModalIfAny();
   setSaveStatus();
+  syncOfflineFromCloud();
 } else {
   syncSnapshot();
   initFirebaseSync();
