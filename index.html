@@ -345,6 +345,21 @@
     text-shadow:0 0 3px var(--paper), 0 0 3px var(--paper), 0 0 5px var(--paper);
   }
   .area-overlay sup{ font-size:.7em; }
+  /* Fixed panel letter (A, B ... Z, AA ...) in the bottom-right corner of each
+     panel: identifies the physical panel and never changes with the pour order. */
+  .letter-overlay{
+    position:absolute;
+    display:flex; align-items:flex-end; justify-content:flex-end;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    color:#fff;
+    pointer-events:none;
+    z-index:3;
+    line-height:1;
+    white-space:nowrap;
+    text-shadow:0 0 2px rgba(11,36,64,.85), 0 0 2px rgba(11,36,64,.85), 0 1px 3px rgba(11,36,64,.6);
+  }
+  .letter-overlay .sc{ transform-origin:right bottom; }
   /* Tiny plan text is drawn at a safe 10px and shrunk with transform:scale().
      Mobile browsers enforce a minimum font-size (~8px) that would otherwise
      inflate it back and make the labels overflow / overlap each other. */
@@ -1043,6 +1058,18 @@ const panels = [
   {num:39, date:'10/11', area:795, l:85.834, t:72.829, w:10.063, h:20.066, nl:89.916, nt:80.053, nw:1.900, nh:4.300, dl:89.566, dt:86.072, dw:2.600, dh:2.200},
 ];
 
+// Fixed letter label per physical panel: A, B, C ... Z, AA, AB ... assigned
+// column by column (left to right), top to bottom inside each column. It is
+// tied to the panel's position on the drawing, so it never follows the pour
+// order or any date edit.
+function panelLetterOf(n){
+  let out = ''; n += 1;
+  while(n > 0){ const m = (n - 1) % 26; out = String.fromCharCode(65 + m) + out; n = Math.floor((n - 1) / 26); }
+  return out;
+}
+const PANEL_LETTER = {};
+panels.slice().sort((a, b) => (a.l - b.l) || (a.t - b.t)).forEach((p, i) => { PANEL_LETTER[p.num] = panelLetterOf(i); });
+
 // Temporary access-road band -- horizontal strip running the full width of
 // the drawing (from the FSA label on the left to the DCH4 label on the
 // right). All values are % of the plan image, same coordinate system as the
@@ -1324,7 +1351,7 @@ function getRank(num){
 function renderPlan(){
   recomputeRanks();
   const wrap = document.getElementById('planWrap');
-  wrap.querySelectorAll('.hit, .num-overlay, .date-overlay, .area-overlay, .access-road-band').forEach(el => el.remove());
+  wrap.querySelectorAll('.hit, .num-overlay, .date-overlay, .area-overlay, .letter-overlay, .access-road-band').forEach(el => el.remove());
 
   // Measure the container once per render (not once per overlay -- that was
   // forcing a layout reflow for every single number/date, 88+ times over).
@@ -1415,6 +1442,22 @@ function renderPlan(){
       setScaledText(areaEl, formatAreaLabelHTML(p.area), parseFloat(boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7)));
       wrap.appendChild(areaEl);
     }
+
+    // Fixed panel letter, bottom-right corner, same size as the area text
+    const letFont = parseFloat(boxFontPx(wrapRect, p.dw, p.dh, 0.62, 7));
+    const letPad = Math.max(1.5, 4 * planScale(wrapRect));
+    const letH = Math.min(p.h, 100 * (letFont * 1.6 + letPad) / wrapRect.height);
+    const letEl = document.createElement('div');
+    letEl.className = 'letter-overlay';
+    letEl.id = 'letter-' + p.num;
+    letEl.style.left = p.l + '%';
+    letEl.style.width = p.w + '%';
+    letEl.style.top = (p.t + p.h - letH) + '%';
+    letEl.style.height = letH + '%';
+    letEl.style.boxSizing = 'border-box';
+    letEl.style.padding = '0 ' + letPad + 'px ' + letPad + 'px 0';
+    setScaledText(letEl, PANEL_LETTER[p.num] || '', letFont);
+    wrap.appendChild(letEl);
   });
   updateTotal();
   if(!OFFLINE) syncSnapshot();
@@ -2503,7 +2546,7 @@ function buildOfflineHtml(){
   const clone = document.documentElement.cloneNode(true);
   clone.querySelector('#embeddedData').textContent = serializeData();
   // Drop generated overlays and reset transient UI so the copy opens clean.
-  clone.querySelectorAll('#planWrap .hit, #planWrap .num-overlay, #planWrap .date-overlay, #planWrap .area-overlay, #planWrap .access-road-band')
+  clone.querySelectorAll('#planWrap .hit, #planWrap .num-overlay, #planWrap .date-overlay, #planWrap .area-overlay, #planWrap .letter-overlay, #planWrap .access-road-band')
        .forEach(el => el.remove());
   const pw = clone.querySelector('#planWrap'); if(pw) pw.removeAttribute('style');
   ['timeline','editCalGrid','calGrid'].forEach(id => { const el = clone.querySelector('#' + id); if(el) el.innerHTML = ''; });
