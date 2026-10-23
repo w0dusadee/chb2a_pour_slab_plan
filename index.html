@@ -590,7 +590,7 @@
     body.print-plan{ background:#fff !important; display:block !important; height:auto !important; min-height:0 !important; color:#0b2440; padding:calc(9mm + 10px) 9mm 9mm; box-sizing:border-box; }
     body.print-plan, body.print-plan *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     body.print-plan .overlay, body.print-plan .view-counter, body.print-plan .zoom-controls,
-    body.print-plan #offlineBtn, body.print-plan #exportBtn, body.print-plan #printPlanBtn, body.print-plan #saveStatus,
+    body.print-plan #offlineBtn, body.print-plan #exportBtn, body.print-plan #updateBtn, body.print-plan #printPlanBtn, body.print-plan #saveStatus,
     body.print-plan .cal-pop, body.print-plan .report-hint, body.print-plan .symbols .hint,
     body.print-plan .date-btn .cal-ico{ display:none !important; }
     body.print-plan header{ background:#fff; color:#0b2440; padding:0 0 12px; border-bottom:3px solid #e0c94a; position:relative; z-index:auto; }
@@ -802,9 +802,13 @@
         <div class="cal-foot"><button id="calToday">Jump to today</button></div>
       </div>
     </div>
-    <button class="date-btn only-online" id="offlineBtn" type="button" title="Download an OFFLINE copy of this page. Current progress and pour dates are written INTO the file; when opened with internet it loads the latest online data and asks you to save the file.">
+    <button class="date-btn only-online" id="offlineBtn" type="button" title="Download an OFFLINE copy of this page. Current progress and pour dates are written INTO the file; press its Update progress button (needs internet) to load the latest online data, then save the file.">
       <span>Save offline copy</span>
       <span class="cal-ico">&#128190;</span>
+    </button>
+    <button class="date-btn only-offline" id="updateBtn" type="button" title="Load the latest progress and pour dates from the online database (needs internet). Nothing is updated until you press this button.">
+      <span>Update progress</span>
+      <span class="cal-ico">&#128260;</span>
     </button>
     <button class="date-btn only-offline" id="exportBtn" type="button" title="Write all progress and pour-date edits into this HTML file (data is stored inside the file, not in the browser)">
       <span>Save to file</span>
@@ -961,9 +965,9 @@
 /* ===================== Run mode: ONLINE or OFFLINE =====================
    OFFLINE = the file carries its own data in #embeddedData and works with no
    internet. Nothing is written to browser storage or to Firebase. When the
-   file is opened WITH internet it reads (read-only) the latest online data
-   once; if that differs from the file, the file is updated and the user is
-   asked to save it (see syncOfflineFromCloud).
+   file's "Update progress" button is pressed (and only then) it reads
+   (read-only) the latest online data; if that differs from the file, the
+   file is updated and the user is asked to save it (see syncOfflineFromCloud).
    ONLINE  = the normal hosted page: Firebase live sync + localStorage cache. */
 const embeddedEl = document.getElementById('embeddedData');
 function readEmbedded(){
@@ -1710,7 +1714,7 @@ function openModal(num){
   renderTimeline(p, pourDate, rec);
 
   document.getElementById('modalFoot').textContent = OFFLINE
-    ? 'Check off each step, then press "Save to file" (progress is stored inside the file; online data is loaded when internet is available).'
+    ? 'Check off each step, then press "Save to file" (progress is stored inside the file; press "Update progress" to load the latest online data).'
     : 'Check off each step to save progress (synced online and cached in this browser).';
 
   document.getElementById('overlay').classList.add('open');
@@ -1890,6 +1894,9 @@ function rptCompute(){
   const planAt = i => rows.reduce((a,r) => a + (r.planIdx <= i ? r.area : 0), 0);
   const actAt  = i => rows.reduce((a,r) => a + (r.poured && r.actIdx <= i ? r.area : 0), 0);
   const lastIdx = 7 * RPT_WEEKS - 1;
+  // The chart stops on the last scheduled pour date (not on the Friday that
+  // closes the last week), so the final point sits on that date.
+  const endIdx = Math.max(0, Math.min(lastIdx, rows.reduce((m, r) => Math.max(m, r.planIdx), -1)));
   let cw = Math.floor(todayIdx / 7) + 1;
   const before = todayIdx < 0, after = todayIdx > lastIdx;
   cw = Math.min(RPT_WEEKS, Math.max(1, cw));
@@ -1910,7 +1917,7 @@ function rptCompute(){
   const planToDate = Math.min(planAt(Math.min(todayIdx, lastIdx)), total);
   const planWeekEnd = cur.planCum;
   const planLast = planAt(lastEnd);
-  return {rows, total, planAt, actAt, todayIdx, cw, cur, weeks, before, after, lastIdx,
+  return {rows, total, planAt, actAt, todayIdx, cw, cur, weeks, before, after, lastIdx, endIdx,
           accumNow, accumLast, progressWeek: accumNow - accumLast, planToDate, planWeekEnd, planLast,
           variance: accumNow - planToDate, baseline: planAt(-1), pourKey};
 }
@@ -1921,7 +1928,9 @@ function rptChartSvg(D, host){
   const H = narrow ? 340 : Math.round(Math.min(540, Math.max(380, W * 0.56)));
   const m = {l: narrow ? 46 : 72, r: narrow ? 14 : 30, t: 34, b: narrow ? 56 : 62};
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
-  const x0 = -1, x1 = D.lastIdx;
+  const x0 = -1, x1 = Math.max(D.endIdx, 1);
+  const wEnd = w => Math.min(w.b, D.endIdx);            // chart position of a week's closing tick
+  const shown = D.weeks.filter(w => w.a <= D.endIdx);   // weeks that start on/before the last pour
   const X = i => m.l + (i - x0) / (x1 - x0) * iw;
   const step = narrow ? 10000 : 5000;
   const yMax = Math.max(step, Math.ceil(D.total / 5000) * 5000);
@@ -1933,8 +1942,8 @@ function rptChartSvg(D, host){
        '<filter id="rptSh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0b2440" flood-opacity=".25"/></filter></defs>';
   g += '<rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="#fbfcfe" rx="4"/>';
   // week bands
-  D.weeks.forEach(w => {
-    const xa = X(w.a - 1), xb = X(w.b);
+  shown.forEach(w => {
+    const xa = X(w.a - 1), xb = X(wEnd(w));
     const cur = w.k === D.cw && !D.after && !D.before || (D.after && w.k === RPT_WEEKS);
     if(w.k % 2 === 0 && !cur) g += '<rect x="' + f1(xa) + '" y="' + m.t + '" width="' + f1(xb - xa) + '" height="' + ih + '" fill="#eef3f9" opacity=".75"/>';
     if(cur) g += '<rect x="' + f1(xa) + '" y="' + m.t + '" width="' + f1(xb - xa) + '" height="' + ih + '" fill="#f5e07a" opacity=".42"/>' +
@@ -1952,10 +1961,11 @@ function rptChartSvg(D, host){
   g += '<line x1="' + m.l + '" x2="' + (m.l + iw) + '" y1="' + f1(yT) + '" y2="' + f1(yT) + '" stroke="#7a8aa0" stroke-width="1.3" stroke-dasharray="6 5"/>';
   g += '<text x="' + f1(m.l + iw * (narrow ? 0.5 : 0.52)) + '" y="' + f1(yT + 17) + '" text-anchor="middle" font-size="' + (narrow ? 10.5 : 12) + '" font-weight="600" fill="#52647a" ' + FONT + '>Total scope ' + rN2(D.total) + ' sq.m.</text>';
   // x axis ticks / labels
-  const ticks = [{i:-1, top:rptDM(-1), bot:'Start'}].concat(D.weeks.map(w => ({i:w.b, top:rptDM(w.b), bot:'W' + w.k, k:w.k})));
+  const ticks = [{i:-1, top:rptDM(-1), bot:'Start'}].concat(shown.map(w => ({i:wEnd(w), top:rptDM(wEnd(w)), bot:'W' + w.k, k:w.k})));
   ticks.forEach((t, n) => {
     const x = X(t.i);
     g += '<line x1="' + f1(x) + '" x2="' + f1(x) + '" y1="' + (m.t + ih) + '" y2="' + (m.t + ih + 5) + '" stroke="#8896a6"/>';
+    if(ticks[n + 1] && X(ticks[n + 1].i) - x < (narrow ? 26 : 44)) return;   // too close to the next tick: keep the mark, drop the text
     const skip = narrow && n > 0 && n % 2 === 0 && n !== ticks.length - 1;
     if(skip) return;
     const anchor = n === 0 ? 'start' : 'middle';
@@ -1966,15 +1976,15 @@ function rptChartSvg(D, host){
   g += '<text x="' + f1(m.l + iw / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="' + (narrow ? 10 : 11.5) + '" font-weight="600" fill="#33475c" ' + FONT + '>Date (end of week)</text>';
 
   // plan vertices
-  const tIn = D.todayIdx >= 0 && D.todayIdx <= D.lastIdx;
-  const pIdx = [-1].concat(D.weeks.map(w => w.b));
+  const tIn = D.todayIdx >= 0 && D.todayIdx <= D.endIdx;
+  const pIdx = [-1].concat(shown.map(w => wEnd(w)));
   if(tIn && pIdx.indexOf(D.todayIdx) < 0) pIdx.push(D.todayIdx);
   pIdx.sort((a, b) => a - b);
   const plan = pIdx.map(i => ({i, v: D.planAt(i)}));
   // progress vertices
   const aIdx = [-1];
-  D.weeks.forEach(w => { if(w.b < D.todayIdx && w.b <= D.lastIdx) aIdx.push(w.b); });
-  let tEnd = Math.min(D.todayIdx, D.lastIdx);
+  shown.forEach(w => { if(wEnd(w) < D.todayIdx && wEnd(w) <= D.endIdx && aIdx.indexOf(wEnd(w)) < 0) aIdx.push(wEnd(w)); });
+  let tEnd = Math.min(D.todayIdx, D.endIdx);
   if(tEnd >= 0 && aIdx.indexOf(tEnd) < 0) aIdx.push(tEnd);
   const act = aIdx.map(i => ({i, v: i >= tEnd && tEnd >= 0 ? D.accumNow : D.actAt(i)}));
   if(D.before) act.length = 1, act[0].v = D.accumNow;
@@ -1998,15 +2008,17 @@ function rptChartSvg(D, host){
   }
   // plan dots + labels
   plan.forEach((a, n) => {
-    const isWeek = D.weeks.some(w => w.b === a.i) || a.i === -1;
+    const isWeek = shown.some(w => wEnd(w) === a.i) || a.i === -1;
     if(!isWeek) return;
     const x = X(a.i), y = Y(a.v);
     g += '<circle cx="' + f1(x) + '" cy="' + f1(y) + '" r="' + (narrow ? 3.6 : 4.8) + '" fill="#fff" stroke="#d6342a" stroke-width="2.6"><title>Plan ' + rptDM(a.i) + ': ' + rN2(a.v) + ' sq.m.</title></circle>';
     const showLbl = wide || (!narrow && n % 2 === 1 && false);
     const isLast = n === plan.length - 1;
     if((wide || (!narrow && (n % 2 === 0))) && a.v > 0){
-      const ax = isLast ? 'end' : 'middle';
-      g += '<text x="' + f1(x + (isLast ? 4 : 0)) + '" y="' + f1(y - 11) + '" text-anchor="' + ax + '" font-size="11.5" font-weight="700" fill="#b8271f" stroke="#fbfcfe" stroke-width="3" paint-order="stroke" ' + FONT + '>' + rN0(a.v) + '</text>';
+      const nx = plan.slice(n + 1).find(q => shown.some(w => wEnd(w) === q.i));
+      const crowd = !!nx && (X(nx.i) - x) < 40;      // next point is right beside this one
+      const ax = (isLast || crowd) ? 'end' : 'middle';
+      g += '<text x="' + f1(x + (isLast ? 4 : crowd ? -7 : 0)) + '" y="' + f1(y - (crowd ? 9 : 11)) + '" text-anchor="' + ax + '" font-size="11.5" font-weight="700" fill="#b8271f" stroke="#fbfcfe" stroke-width="3" paint-order="stroke" ' + FONT + '>' + rN0(a.v) + '</text>';
     }
   });
   // progress dots + labels
@@ -2031,7 +2043,7 @@ function rptChartSvg(D, host){
     const cy = by + bh <= yp ? by + bh : by;
     g += '<line x1="' + f1(cx) + '" y1="' + f1(cy) + '" x2="' + f1(xp) + '" y2="' + f1(yp) + '" stroke="#17884b" stroke-width="1.8"/>';
     g += '<g filter="url(#rptSh)"><rect x="' + f1(bx) + '" y="' + f1(by) + '" width="' + bw + '" height="' + bh + '" rx="9" fill="#ffffff" stroke="#17884b" stroke-width="2"/></g>';
-    g += '<text x="' + f1(bx + bw / 2) + '" y="' + f1(by + (narrow ? 15 : 17)) + '" text-anchor="middle" font-size="' + (narrow ? 9.5 : 10.5) + '" font-weight="600" fill="#5c6b7a" ' + FONT + '>Progress / Plan &middot; ' + rptDM(Math.min(D.todayIdx, D.lastIdx)) + '</text>';
+    g += '<text x="' + f1(bx + bw / 2) + '" y="' + f1(by + (narrow ? 15 : 17)) + '" text-anchor="middle" font-size="' + (narrow ? 9.5 : 10.5) + '" font-weight="600" fill="#5c6b7a" ' + FONT + '>Progress / Plan &middot; ' + rptDM(Math.min(D.todayIdx, D.endIdx)) + '</text>';
     g += '<text x="' + f1(bx + bw / 2) + '" y="' + f1(by + (narrow ? 33 : 37)) + '" text-anchor="middle" font-size="' + (narrow ? 14 : 17) + '" font-weight="800" fill="#0f6b38" ' + FONT + '>' + txt + '</text>';
   }
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Cumulative planned versus poured area by week">' + g + '</svg>';
@@ -2068,7 +2080,7 @@ function renderReport(){
     '<div class="rpt-kpi" style="--kc:' + vColor + '"><div class="k-label">Variance vs plan</div><div class="k-value">' + rSign2(v) + '<small>sq.m.</small></div>' +
       '<div class="k-sub"><span class="rpt-chip" style="--cc:' + vColor + '">' + vText + '</span><br>' + (v < -vTol ? rN2(-v / D.total * 100) + '% of scope behind' : v > vTol ? rN2(v / D.total * 100) + '% of scope ahead' : 'Actual matches plan') + '</div></div>' +
     '<div class="rpt-kpi" style="--kc:#8a5cc8"><div class="k-label">Remaining</div><div class="k-value">' + rN2(remain) + '<small>sq.m.</small></div>' +
-      '<div class="k-sub">' + (nTotal - nDone) + ' panels left<br>' + (D.after ? 'Schedule period ended' : weeksLeft + ' week' + (weeksLeft === 1 ? '' : 's') + ' to go (ends ' + rptDM(D.lastIdx) + ')') + '</div></div>';
+      '<div class="k-sub">' + (nTotal - nDone) + ' panels left<br>' + (D.after ? 'Schedule period ended' : weeksLeft + ' week' + (weeksLeft === 1 ? '' : 's') + ' to go (ends ' + rptDM(D.endIdx) + ')') + '</div></div>';
 
   document.getElementById('rptSummary').innerHTML =
     '<h3>Summary</h3>' +
@@ -2557,6 +2569,7 @@ function buildOfflineHtml(){
   const st = clone.querySelector('#saveStatus');
   if(st){ st.textContent = '● Saved in file'; st.className = 'save-status ok only-offline'; }
   const eb2 = clone.querySelector('#exportBtn'); if(eb2) eb2.classList.remove('attn');
+  const ub = clone.querySelector('#updateBtn'); if(ub){ ub.removeAttribute('disabled'); const ul = ub.querySelector('span'); if(ul) ul.textContent = 'Update progress'; }
   const sb = clone.querySelector('#syncBanner');
   if(sb){ sb.removeAttribute('style'); sb.className = 'sync-banner'; sb.dataset.kind = ''; sb.querySelector('#syncBannerMsg').textContent = ''; sb.querySelector('#syncBannerBtns').innerHTML = ''; }
   return '<!DOCTYPE html>\n' + clone.outerHTML;
@@ -2642,9 +2655,10 @@ window.addEventListener('beforeunload', (e) => {
   if(OFFLINE && dirty){ e.preventDefault(); e.returnValue = ''; }
 });
 
-/* ===================== OFFLINE file: refresh from the cloud =====================
-   Runs once when an offline file is opened. With no internet (or a blocked /
-   slow connection) it silently does nothing and the file's own data is used.
+/* ===================== OFFLINE file: "Update progress" =====================
+   Runs ONLY when the user presses the Update progress button; opening the
+   file never contacts the cloud. With no internet (or a blocked / slow
+   connection) it just says so and the file's own data stays as it is.
    With internet it READS the shared online data (never writes to it):
      - same as the file            -> nothing to do
      - different, file has no edits of its own since it last matched the cloud
@@ -2655,25 +2669,41 @@ window.addEventListener('beforeunload', (e) => {
 function withTimeout(promise, ms){
   return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 }
+let updating = false;
 async function syncOfflineFromCloud(){
-  if(navigator.onLine === false) return;
+  if(updating) return;
+  const btn = document.getElementById('updateBtn');
+  const lbl = btn && btn.querySelector('span');
+  const unreachable = () => showBanner('info', 'Could not reach the online data. Check the internet connection and try again.', [], 7000);
+  if(navigator.onLine === false){ unreachable(); return; }
+  updating = true;
+  if(btn) btn.disabled = true;
+  if(lbl) lbl.textContent = 'Updating\u2026';
+  try{ await syncOfflineCore(unreachable); }
+  finally { updating = false; if(btn) btn.disabled = false; if(lbl) lbl.textContent = 'Update progress'; }
+}
+async function syncOfflineCore(unreachable){
   let cloud;
   try{
     const f = await withTimeout(loadFirebase(), 12000);
     const [a, b] = await withTimeout(Promise.all([f.get(f.storeRef), f.get(f.overridesRef)]), 12000);
-    if(!a.exists() && !b.exists()) return;          // empty cloud: never wipe the file
+    if(!a.exists() && !b.exists()){                 // empty cloud: never wipe the file
+      showBanner('info', 'The online database has no progress data yet.', [], 6000);
+      return;
+    }
     cloud = {
       store: a.exists() ? (canon(a.val()) || {}) : (canon(store) || {}),
       overrides: b.exists() ? (canon(b.val()) || {}) : (canon(overrides) || {})
     };
   }catch(err){
     console.warn('Offline file: online data not reachable, using the data saved in the file.', err);
+    unreachable();
     return;
   }
   const sameAsFile = eqData(cloud.store, store) && eqData(cloud.overrides, overrides);
   if(sameAsFile){
     baseData = cloud;
-    showBanner('info', 'Checked online data — this file is up to date.', [], 4000);
+    showBanner('info', 'Progress is already up to date with the online data.', [], 4000);
     return;
   }
   const localEdited = !!baseData && !(eqData(baseData.store, store) && eqData(baseData.overrides, overrides));
@@ -2700,13 +2730,13 @@ async function syncOfflineFromCloud(){
 }
 
 if(OFFLINE){
-  // Data comes from #embeddedData first (works with no internet); then, if
-  // there is internet, the latest online data is read once (see above).
+  // Data comes from #embeddedData (works with no internet). The cloud is only
+  // contacted when the user presses "Update progress" (see above).
   renderPlan();
   updateTotal();
   refreshOpenModalIfAny();
   setSaveStatus();
-  syncOfflineFromCloud();
+  document.getElementById('updateBtn').addEventListener('click', (e) => { e.stopPropagation(); syncOfflineFromCloud(); });
 } else {
   syncSnapshot();
   initFirebaseSync();
