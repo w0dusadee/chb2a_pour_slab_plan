@@ -48,7 +48,10 @@
     margin:0 0 3px;
   }
   h1{ margin:0; font-size:16px; font-weight:600; letter-spacing:.005em; }
-  .toolbar{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:8px; }
+  .toolbar{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:3px; }
+  @media (min-width:1000px){ header .progress-total{ margin-top:-13px; } }
+  .tb-left{ display:flex; flex-direction:column; justify-content:center; gap:7px; min-width:0; flex:1 1 380px; align-self:flex-start; }
+  .tb-btns{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
 
   .date-picker{ position:relative; }
   .date-btn{
@@ -157,9 +160,17 @@
      one symbol per line. */
   .symbols-bar{
     flex:0 0 auto;
-    display:flex; justify-content:flex-start;
+    display:none;               /* screen: the key lives in the header (.legend); this copy is for printing */
+    justify-content:flex-start;
     padding:6px 12px 10px;
   }
+  .legend{ display:flex; flex-wrap:wrap; gap:2px 18px; font-size:11.5px; color:#c7d3e2; align-items:center; margin:0; line-height:1.25; }
+  .legend .row{ display:flex; align-items:center; }
+  .legend span.swatch{
+    display:inline-block; width:12px; height:12px; border-radius:2px; flex-shrink:0;
+    margin-right:6px; border:1px solid rgba(0,0,0,.2);
+  }
+  .legend .hint{ color:#8ea9db; }
   .symbols{
     background:rgba(11,36,64,.92);
     border:1px solid rgba(255,255,255,.22);
@@ -597,6 +608,7 @@
     body.print-plan header .eyebrow{ color:#4a68a8; font-size:10.5px; padding-right:0; margin-bottom:3px; }
     body.print-plan h1{ font-size:17px; color:#0b2440; padding-right:340px; line-height:1.25; }
     body.print-plan .toolbar{ margin-top:7px; gap:0; }
+    body.print-plan .tb-btns{ gap:0; }
     body.print-plan .date-btn{ background:none; border:none; padding:0; color:#33475c; font-size:12.5px; }
     body.print-plan .date-btn b{ color:#0b2440; font-size:13px; }
     body.print-plan .progress-total{ position:absolute; right:0; top:0; margin:0; background:#f7f4ea; border:1px solid #c9c2ab; border-left:4px solid #e0c94a; border-radius:3px; color:#0b2440; font-size:12px; padding:6px 12px; }
@@ -604,7 +616,8 @@
     body.print-plan .progress-total .volume-line{ color:#14663a; }
     body.print-plan .stage{ padding:20px 0 0; display:block; overflow:visible; flex:none; }
     body.print-plan .plan-wrap{ box-shadow:none; border:1px solid #c9c2ab; border-radius:0; margin:0 auto; }
-    body.print-plan .symbols-bar{ padding:22px 0 0; }
+    body.print-plan .symbols-bar{ display:flex; padding:22px 0 0; }
+    body.print-plan .legend{ display:none !important; }
     body.print-plan .symbols{ background:none; color:#0b2440; border:none; border-radius:0; box-shadow:none; display:flex; align-items:stretch; gap:12px; padding:0; font-size:12.5px; }
     body.print-plan .symbols h2{ color:#fff; background:#0b2440; border:none; margin:0; padding:0 16px; font-size:12.5px; border-radius:4px; display:flex; align-items:center; letter-spacing:.16em; }
     body.print-plan .symbols .row{ flex:1; padding:12px 16px; border:1px solid #c9c2ab; border-left-width:5px; border-radius:4px; background:#fbfaf5; align-items:center; gap:0; }
@@ -731,11 +744,15 @@
     .eyebrow{ font-size:clamp(7.5px,2.2vw,10px); letter-spacing:.08em; margin-bottom:2px; }
     h1{ font-size:clamp(11px,3.4vw,16px); line-height:1.25; }
     .toolbar{ gap:6px 10px; margin-top:6px; }
+    .tb-btns{ gap:6px 10px; }
+    .tb-left{ gap:5px; }
     .date-btn{ font-size:clamp(9px,2.6vw,11px); padding:4px 7px; gap:5px; }
     .date-btn b{ font-size:clamp(9.5px,2.8vw,12px); }
     .date-btn .cal-ico{ font-size:clamp(10px,2.9vw,12px); }
     .save-status{ font-size:clamp(8.5px,2.4vw,11px); padding:4px 7px; white-space:normal; }
     .symbols-bar{ padding:4px 8px 8px; }
+    .legend{ font-size:clamp(9px,2.6vw,11.5px); gap:2px 12px; }
+    .legend span.swatch{ width:10px; height:10px; margin-right:4px; }
     .symbols{ font-size:clamp(9.5px,2.7vw,12.5px); padding:6px 10px 7px; }
     .symbols h2{ font-size:clamp(9px,2.5vw,12px); margin-bottom:3px; padding-bottom:3px; }
     .symbols span.swatch{ width:11px; height:11px; margin-right:6px; }
@@ -787,6 +804,8 @@
   <p class="eyebrow">CHB2A &middot; DOLPHIN &middot; SHOP DRAWING S-DCH-2200A-2.0</p>
   <h1>Concrete Pour Schedule &mdash; Ground Floor General Arrangement (FSA&ndash;DCH)</h1>
   <div class="toolbar">
+    <div class="tb-left">
+    <div class="tb-btns">
     <div class="date-picker">
       <button class="date-btn" id="dateBtn">
         <span>Reference date:</span> <b id="dateDisplay">--/--/----</b>
@@ -819,6 +838,15 @@
       <span class="cal-ico">&#128424;</span>
     </button>
     <span class="save-status ok only-offline" id="saveStatus">&#9679; Saved in file</span>
+    </div>
+    <div class="legend" role="group" aria-label="Status colours">
+      <span class="row"><span class="swatch" style="background:#b9e0a8"></span>Steps on/ahead of schedule</span>
+      <span class="row"><span class="swatch" style="background:#f0b878"></span>Steps 1&ndash;8 overdue</span>
+      <span class="row"><span class="swatch" style="background:#d1483a"></span>Pour (step 9) overdue</span>
+      <span class="row"><span class="swatch" style="background:#c7cbd1"></span>All 9 steps complete</span>
+      <span class="row hint">Click any panel to view details</span>
+    </div>
+    </div>
     <div class="progress-total" id="progressTotal" role="button" tabindex="0" title="Click to open the weekly progress report" aria-label="Open weekly progress report">
       <span class="tasks-line">Total progress: 0 / 360 tasks</span>
       <span class="volume-line" id="progressVolume">0.00 / 0.00 cu.m.</span>
@@ -842,8 +870,7 @@
 </div>
 
 <div class="symbols-bar">
-  <div class="symbols" role="group" aria-label="Symbols">
-    <h2>Symbols</h2>
+  <div class="symbols" role="group" aria-label="Status colours">
     <div class="row"><span class="swatch" style="background:#b9e0a8"></span><span class="lbl">Steps on/ahead of schedule</span><span class="cnt" data-st="green"></span></div>
     <div class="row"><span class="swatch" style="background:#f0b878"></span><span class="lbl">Steps 1&ndash;8 overdue</span><span class="cnt" data-st="orange"></span></div>
     <div class="row"><span class="swatch" style="background:#d1483a"></span><span class="lbl">Pour (step 9) overdue</span><span class="cnt" data-st="red"></span></div>
