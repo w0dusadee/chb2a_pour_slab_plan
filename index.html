@@ -706,6 +706,17 @@
   .step .date.overdue{ color:#d1483a; font-weight:700; }
   .step label.chk{ display:flex; align-items:center; gap:6px; cursor:pointer; }
   .step input[type=checkbox]{ width:16px; height:16px; accent-color:#5b7cc0; cursor:pointer; }
+  .step .done-line{ font-size:12px; margin-top:3px; color:#2e7d32; display:flex; flex-wrap:wrap; gap:3px 8px; align-items:center; }
+  .step .done-line .delta.late{ color:#d1483a; font-weight:700; }
+  .step .done-line .prev{ color:var(--muted); font-style:italic; }
+  .step .done-line button{ font:inherit; font-size:11px; border:1px solid var(--paper-line); background:#fff; color:var(--navy); border-radius:3px; padding:1px 7px; cursor:pointer; }
+  .step .done-line input[type=date]{ font:inherit; font-size:12px; padding:1px 4px; border:1px solid var(--paper-line); border-radius:3px; color:var(--ink); background:#fff; }
+  .untick-confirm{ margin-top:6px; padding:8px 10px; border:1px solid #e7a05a; background:#fff6e8; border-radius:4px; font-size:12px; line-height:1.4; color:#5a3b10; }
+  .untick-confirm .btns{ display:flex; gap:8px; margin-top:6px; }
+  .untick-confirm button{ font:inherit; font-size:12px; font-weight:600; border-radius:3px; padding:3px 10px; cursor:pointer; border:1px solid #c9c2ab; background:#fff; color:var(--navy); }
+  .untick-confirm button.danger{ background:#d1483a; border-color:#d1483a; color:#fff; }
+  .untick-confirm button.primary{ background:var(--navy); border-color:var(--navy); color:#f5e07a; }
+  .untick-confirm .btns{ flex-wrap:wrap; }
   .modal-foot{ padding:0 22px 20px; font-size:11px; color:var(--muted); }
 
   /* Password gate for editing */
@@ -1318,6 +1329,70 @@ function materializeRec(r){
   r._v9 = true;
 }
 
+/* ---- Completion ("Done") dates ----
+   Each record may carry  _d: {stageKey: 'YYYY-MM-DD'}  = the day the task was
+   finished, and  _p: {stageKey: 'YYYY-MM-DD'}  = the date of a task that was
+   un-ticked (kept so ticking it again restores the original date instead of
+   losing it). Both live inside the panel's progress record, so they are saved
+   to Firebase / the offline file together with the ticks. The tick itself is
+   still the plain boolean, so nothing else in the app changes. */
+function p2(n){ return (n < 10 ? '0' : '') + n; }
+function isoOf(d){ return d.getFullYear() + '-' + p2(d.getMonth()+1) + '-' + p2(d.getDate()); }
+function parseISO(sv){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(sv || '');
+  return m ? new Date(+m[1], +m[2]-1, +m[3]) : null;
+}
+function realToday(){ const t = new Date(); t.setHours(0,0,0,0); return t; }
+function dueDateOf(p, pourDate, stage){
+  const d = new Date(pourDate); d.setDate(d.getDate() + stageOffset(p.num, stage)); return d;
+}
+// Record the finish date of a task being ticked. If the task was un-ticked
+// earlier, its previous date comes back; otherwise the date is `fallback`.
+function stampDone(rec, key, fallbackDate, forceFallback){
+  if(!rec._d) rec._d = {};
+  const prev = rec._p && rec._p[key];
+  if(forceFallback && rec._p && rec._p[key]){          // user chose "use today" -> drop the old date
+    delete rec._p[key];
+    if(!Object.keys(rec._p).length) delete rec._p;
+    rec._d[key] = isoOf(fallbackDate);
+  } else if(prev && parseISO(prev)){
+    rec._d[key] = prev;
+    delete rec._p[key];
+    if(!Object.keys(rec._p).length) delete rec._p;
+  } else {
+    rec._d[key] = isoOf(fallbackDate);
+  }
+}
+// Un-ticking keeps the date as "previous" (never silently destroys it).
+function parkDone(rec, key){
+  if(rec._d && rec._d[key]){
+    if(!rec._p) rec._p = {};
+    rec._p[key] = rec._d[key];
+    delete rec._d[key];
+    if(!Object.keys(rec._d).length) delete rec._d;
+  }
+}
+// One-off migration: ticks saved before this feature have no date, so they are
+// recorded on their PLANNED date. Online only (Firebase + this browser).
+function backfillDoneDates(){
+  if(OFFLINE || !store) return;
+  let changed = false;
+  panels.forEach(p => {
+    const rec = store[p.num];
+    if(!rec || typeof rec !== 'object') return;
+    const pour = effectivePourDate(p);
+    if(!pour || isNaN(pour.getTime())) return;
+    STAGES.forEach(stage => {
+      if(!tickOf(rec, stage.key)) return;
+      if(rec._d && parseISO(rec._d[stage.key])) return;
+      if(!rec._d) rec._d = {};
+      rec._d[stage.key] = isoOf(dueDateOf(p, pour, stage));
+      changed = true;
+    });
+  });
+  if(changed) saveStore(store);
+}
+
 function panelProgress(num){
   const rec = store[num] || {};
   let done = 0;
@@ -1781,7 +1856,53 @@ function renderTimeline(p, pourDate, rec){
     dt.className = 'date' + (isOverdue ? ' overdue' : '');
     dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (isOverdue ? '  (overdue)' : '');
 
-    function applyStageChange(){
+    // "Done" line: when the task was finished (editable), plus how it compares to plan.
+    const doneLine = document.createElement('div');
+    doneLine.className = 'done-line';
+    function paintDone(){
+      doneLine.innerHTML = '';
+      doneLine.style.display = 'none';
+      const rc = store[p.num] || {};
+      const mk = (tag, txt, cls) => { const e = document.createElement(tag); if(cls) e.className = cls; e.textContent = txt; return e; };
+      if(tickOf(rc, stage.key)){
+        const iso = rc._d && rc._d[stage.key];
+        const dd = parseISO(iso) || d;
+        const diff = Math.round((dd.getTime() - d.getTime()) / 86400000);
+        doneLine.style.display = 'flex';
+        doneLine.appendChild(mk('span', '\u2714 Done ' + fmtDDMMYYYY(dd) + (parseISO(iso) ? '' : ' (plan date)')));
+        doneLine.appendChild(mk('span',
+          diff === 0 ? 'on plan' : (diff > 0 ? diff + ' day' + (diff > 1 ? 's' : '') + ' late' : (-diff) + ' day' + (diff < -1 ? 's' : '') + ' early'),
+          'delta' + (diff > 0 ? ' late' : '')));
+        const eb = mk('button', 'Edit date'); eb.type = 'button';
+        eb.addEventListener('click', () => {
+          const open = () => {
+            doneLine.innerHTML = '';
+            const inp = document.createElement('input'); inp.type = 'date'; inp.value = isoOf(dd);
+            const ok = mk('button', 'Save'); ok.type = 'button';
+            const no = mk('button', 'Cancel'); no.type = 'button';
+            ok.addEventListener('click', () => {
+              if(!parseISO(inp.value)) return;
+              const r2 = store[p.num] || (store[p.num] = {});
+              if(!r2._d) r2._d = {};
+              r2._d[stage.key] = inp.value;
+              saveStore(store);
+              paintDone();
+            });
+            no.addEventListener('click', paintDone);
+            doneLine.appendChild(mk('span', '\u2714 Done on'));
+            doneLine.appendChild(inp); doneLine.appendChild(ok); doneLine.appendChild(no);
+          };
+          if(!unlockedState.task) requestUnlock('task', open); else open();
+        });
+        doneLine.appendChild(eb);
+      } else if(rc._p && parseISO(rc._p[stage.key])){
+        doneLine.style.display = 'flex';
+        doneLine.appendChild(mk('span', 'Previously done ' + fmtDDMMYYYY(parseISO(rc._p[stage.key])) + ' \u2014 tick again to choose this date or today', 'prev'));
+      }
+    }
+    paintDone();
+
+    function applyStageChange(choice){      // choice: 'prev' | 'today' when re-ticking a task that had a done date
       if(!store[p.num]) store[p.num] = {};
 
       // Checking off the final "Concrete Pour" step means every prep step
@@ -1789,7 +1910,16 @@ function renderTimeline(p, pourDate, rec){
       // timeline and re-render it (fully "done" -> normal grey, not green).
       const isPourStage = (stage === STAGES[STAGES.length - 1]);
       if(isPourStage && cb.checked){
-        STAGES.forEach(s => { store[p.num][s.key] = true; });
+        const rcp = store[p.num];
+        const tdy = realToday();
+        STAGES.forEach(s => {
+          if(tickOf(rcp, s.key) && rcp._d && parseISO(rcp._d[s.key])){ rcp[s.key] = true; return; }   // keep recorded dates
+          const due = dueDateOf(p, pourDate, s);
+          const was = tickOf(rcp, s.key);
+          // newly completed by the auto-complete: planned date, but never in the future
+          stampDone(rcp, s.key, was || s === stage ? (s === stage ? tdy : due) : (due < tdy ? due : tdy), s === stage && choice === 'today');
+          rcp[s.key] = true;
+        });
         store[p.num]._v9 = true;
         saveStore(store);
         refreshPanelVisual(p.num);
@@ -1800,22 +1930,79 @@ function renderTimeline(p, pourDate, rec){
 
       materializeRec(store[p.num]);
       store[p.num][stage.key] = cb.checked;
+      if(cb.checked) stampDone(store[p.num], stage.key, realToday(), choice === 'today');
+      else parkDone(store[p.num], stage.key);
       saveStore(store);
       refreshPanelVisual(p.num);
       updateTotal();
       const stillOverdue = !cb.checked && refDate > d;
       dt.classList.toggle('overdue', stillOverdue);
       dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (stillOverdue ? '  (overdue)' : '');
+      paintDone();
+    }
+
+    // Re-ticking a task that was un-ticked before: which date should it get?
+    function askRetick(){
+      tl.querySelectorAll('.untick-confirm').forEach(n => n.remove());
+      const rc = store[p.num] || {};
+      const prevD = parseISO(rc._p && rc._p[stage.key]);
+      const box = document.createElement('div'); box.className = 'untick-confirm';
+      const msg = document.createElement('div');
+      msg.textContent = 'This task was done on ' + fmtDDMMYYYY(prevD) + ' before it was un-ticked. Which done date do you want now?';
+      const btns = document.createElement('div'); btns.className = 'btns';
+      const mkb = (txt, cls) => { const b2 = document.createElement('button'); b2.type = 'button'; if(cls) b2.className = cls; b2.textContent = txt; return b2; };
+      const bPrev = mkb('Keep previous (' + fmtDDMMYYYY(prevD) + ')', 'primary');
+      const bNow = mkb('Use today (' + fmtDDMMYYYY(realToday()) + ')');
+      const bNo = mkb('Cancel');
+      bPrev.addEventListener('click', () => { box.remove(); cb.checked = true; applyStageChange('prev'); });
+      bNow.addEventListener('click', () => { box.remove(); cb.checked = true; applyStageChange('today'); });
+      bNo.addEventListener('click', () => box.remove());
+      btns.appendChild(bPrev); btns.appendChild(bNow); btns.appendChild(bNo);
+      box.appendChild(msg); box.appendChild(btns);
+      body.appendChild(box);
+    }
+
+    // Un-ticking is never silent: ask first, and keep the date as "previous".
+    function askUntick(){
+      tl.querySelectorAll('.untick-confirm').forEach(n => n.remove());
+      const rc = store[p.num] || {};
+      const iso = rc._d && rc._d[stage.key];
+      const box = document.createElement('div'); box.className = 'untick-confirm';
+      const msg = document.createElement('div');
+      msg.textContent = 'Un-tick this task?' + (parseISO(iso) ? ' Its done date (' + fmtDDMMYYYY(parseISO(iso)) + ') is kept as "previous"; when you tick it again you can keep it or use today.' : '');
+      const btns = document.createElement('div'); btns.className = 'btns';
+      const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'danger'; yes.textContent = 'Un-tick';
+      const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Keep ticked';
+      yes.addEventListener('click', () => { box.remove(); cb.checked = false; applyStageChange(); });
+      no.addEventListener('click', () => box.remove());
+      btns.appendChild(yes); btns.appendChild(no);
+      box.appendChild(msg); box.appendChild(btns);
+      body.appendChild(box);
     }
 
     // Require the edit password before the checkbox is allowed to toggle.
     // Once unlocked (for the rest of the session) clicks pass straight
     // through and the 'change' listener below saves as normal.
     cb.addEventListener('click', (e) => {
+      if(tickOf(store[p.num], stage.key)){
+        // already ticked -> this click would UN-tick it: confirm first
+        e.preventDefault();
+        if(!unlockedState.task) requestUnlock('task', askUntick); else askUntick();
+        return;
+      }
+      {
+        const rc0 = store[p.num] || {};
+        if(rc0._p && parseISO(rc0._p[stage.key])){
+          // had a done date before being un-ticked -> ask which date to use
+          e.preventDefault();
+          if(!unlockedState.task) requestUnlock('task', askRetick); else askRetick();
+          return;
+        }
+      }
       if(!unlockedState.task){
         e.preventDefault();
         requestUnlock('task', () => {
-          cb.checked = !cb.checked;
+          cb.checked = true;
           applyStageChange();
         });
       }
@@ -1829,6 +2016,7 @@ function renderTimeline(p, pourDate, rec){
     label.appendChild(cb);
     label.appendChild(textWrap);
     body.appendChild(label);
+    body.appendChild(doneLine);
     step.appendChild(body);
     tl.appendChild(step);
   });
@@ -2491,6 +2679,7 @@ async function initFirebaseSync(){
     renderPlan();
     updateTotal();
     refreshOpenModalIfAny();
+    backfillDoneDates();     // one-off: ticks without a date get their planned date
   });
 
   fb.onValue(fb.overridesRef, (snap) => {
