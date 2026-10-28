@@ -2114,10 +2114,10 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
 });
 
 /* ===================== Weekly progress report ===================== */
-// Reporting calendar: weeks run Saturday to Friday (progress cut-off on Friday).
-// Week 1 = Sat 3 Oct - Fri 9 Oct 2026; week 10 ends Fri 11 Dec 2026.
-const RPT_START = new Date(2026, 9, 3);
-const RPT_WEEKS = 10;
+// Reporting calendar: weeks run Monday to Sunday (progress cut-off on Sunday).
+// Week 1 = Mon 5 Oct - Sun 11 Oct 2026; week 9 ends Sun 6 Dec 2026.
+const RPT_START = new Date(2026, 9, 5);
+const RPT_WEEKS = 9;
 const RPT_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let reportOpen = false;
 
@@ -2151,7 +2151,7 @@ function rptCompute(){
   const planAt = i => rows.reduce((a,r) => a + (r.planIdx <= i ? r.area : 0), 0);
   const actAt  = i => rows.reduce((a,r) => a + (r.poured && r.actIdx <= i ? r.area : 0), 0);
   const lastIdx = 7 * RPT_WEEKS - 1;
-  // The chart stops on the last scheduled pour date (not on the Friday that
+  // The chart stops on the last scheduled pour date (not on the Sunday that
   // closes the last week), so the final point sits on that date.
   const endIdx = Math.max(0, Math.min(lastIdx, rows.reduce((m, r) => Math.max(m, r.planIdx), -1)));
   let cw = Math.floor(todayIdx / 7) + 1;
@@ -2388,7 +2388,7 @@ function renderReport(){
     : '<span class="rpt-empty">&#10003; No overdue pours &mdash; every panel scheduled before today is poured.</span>';
 
   document.getElementById('rptFoot').textContent =
-    'Weeks run Saturday to Friday (progress cut-off on Friday): week 1 = ' + rptRange(0, 6) + ', week ' + RPT_WEEKS + ' = ' + rptRange(7 * RPT_WEEKS - 7, D.lastIdx) + ' ' + RPT_START.getFullYear() + '. Areas in sq.m.';
+    'Weeks run Monday to Sunday (progress cut-off on Sunday): week 1 = ' + rptRange(0, 6) + ', week ' + RPT_WEEKS + ' = ' + rptRange(7 * RPT_WEEKS - 7, D.lastIdx) + ' ' + RPT_START.getFullYear() + '. Areas in sq.m.';
 }
 
 function openReport(){
