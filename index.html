@@ -1343,6 +1343,16 @@ function parseISO(sv){
   return m ? new Date(+m[1], +m[2]-1, +m[3]) : null;
 }
 function realToday(){ const t = new Date(); t.setHours(0,0,0,0); return t; }
+// Ticking a task records "done today", so if the reference date is earlier than
+// today it moves up to today (otherwise the new tick would be hidden as "after the reference date").
+function syncRefToToday(){
+  const t = realToday();
+  if(refDate.getTime() >= t.getTime()) return false;
+  refDate = t;
+  calViewYear = refDate.getFullYear(); calViewMonth = refDate.getMonth();
+  updateDateBtn(); renderPlan(); updateTotal();
+  return true;
+}
 function dueDateOf(p, pourDate, stage){
   const d = new Date(pourDate); d.setDate(d.getDate() + stageOffset(p.num, stage)); return d;
 }
@@ -1377,6 +1387,7 @@ function parkDone(rec, key){
 function backfillDoneDates(){
   if(OFFLINE || !store) return;
   let changed = false;
+  const tdy = realToday(), tdyIso = isoOf(tdy);
   panels.forEach(p => {
     const rec = store[p.num];
     if(!rec || typeof rec !== 'object') return;
@@ -1384,19 +1395,42 @@ function backfillDoneDates(){
     if(!pour || isNaN(pour.getTime())) return;
     STAGES.forEach(stage => {
       if(!tickOf(rec, stage.key)) return;
-      if(rec._d && parseISO(rec._d[stage.key])) return;
+      const cur = rec._d && rec._d[stage.key];
+      if(parseISO(cur)){
+        // a task cannot have been finished in the future (earlier backfill wrote the planned date)
+        if(cur > tdyIso){ rec._d[stage.key] = tdyIso; changed = true; }
+        return;
+      }
       if(!rec._d) rec._d = {};
-      rec._d[stage.key] = isoOf(dueDateOf(p, pour, stage));
+      const due = dueDateOf(p, pour, stage);
+      rec._d[stage.key] = isoOf(due.getTime() > tdy.getTime() ? tdy : due);   // planned date, but never in the future
       changed = true;
     });
   });
   if(changed) saveStore(store);
 }
 
+// A task counts as done AS OF the reference date only if it was ticked on or
+// before that date (its recorded done date; ticks without a date count on their
+// planned date). So picking an earlier reference date shows the plan as it
+// stood then, and a future date shows every task not yet ticked as overdue.
+function tickAsOf(p, rec, key){
+  if(!tickOf(rec, key)) return false;
+  let dd = parseISO(rec && rec._d && rec._d[key]);
+  if(!dd){
+    const st = STAGES.find(x => x.key === key);
+    dd = dueDateOf(p, effectivePourDate(p), st);
+    const tdy = realToday();
+    if(dd.getTime() > tdy.getTime()) dd = tdy;      // a task ticked ahead of plan was not done in the future
+  }
+  return dd.getTime() <= refDate.getTime();
+}
+
 function panelProgress(num){
   const rec = store[num] || {};
+  const p = panels.find(pp => pp.num === num);
   let done = 0;
-  STAGES.forEach(s => { if(tickOf(rec, s.key)) done++; });
+  STAGES.forEach(s => { if(tickAsOf(p, rec, s.key)) done++; });
   return done;
 }
 
@@ -1408,12 +1442,12 @@ function panelStatus(p){
 
   const pourDate = effectivePourDate(p);
   const pourStage = STAGES[STAGES.length - 1];
-  if(!rec[pourStage.key] && refDate > pourDate) return 'red';
+  if(!tickAsOf(p, rec, pourStage.key) && refDate > pourDate) return 'red';
 
   let prepOverdue = false;
   STAGES.slice(0, -1).forEach(s => {
     const d = new Date(pourDate); d.setDate(d.getDate() + stageOffset(p.num, s));
-    if(!tickOf(rec, s.key) && refDate > d) prepOverdue = true;
+    if(!tickAsOf(p, rec, s.key) && refDate > d) prepOverdue = true;
   });
   if(prepOverdue) return 'orange';
 
@@ -1421,7 +1455,7 @@ function panelStatus(p){
   // on-time or ahead of its own scheduled date (and nothing else is overdue).
   let aheadOfSchedule = false;
   STAGES.forEach(s => {
-    if(!tickOf(rec, s.key)) return;
+    if(!tickAsOf(p, rec, s.key)) return;
     const d = new Date(pourDate); d.setDate(d.getDate() + stageOffset(p.num, s));
     if(refDate <= d) aheadOfSchedule = true;
   });
@@ -1740,7 +1774,7 @@ function updateTotal(){
       totalVolume += vol;
       totalArea += p.area;
       const rec = store[p.num] || {};
-      if(rec[pourKey]){ pouredVolume += vol; pouredArea += p.area; }
+      if(tickAsOf(p, rec, pourKey)){ pouredVolume += vol; pouredArea += p.area; }
     }
   });
   const totalTasks = panels.length * STAGES.length;
@@ -1815,9 +1849,10 @@ function openModal(num){
 
   renderTimeline(p, pourDate, rec);
 
-  document.getElementById('modalFoot').textContent = OFFLINE
+  document.getElementById('modalFoot').textContent = (OFFLINE
     ? 'Check off each step, then press "Save to file" (progress is stored inside the file; press "Update progress" to load the latest online data).'
-    : 'Check off each step to save progress (synced online and cached in this browser).';
+    : 'Check off each step to save progress (synced online and cached in this browser).')
+    + (refDate.getTime() < realToday().getTime() ? '  Viewing as of ' + fmtDDMMYYYY(refDate) + ': steps ticked after that date are shown as not done.' : '');
 
   document.getElementById('overlay').classList.add('open');
 }
@@ -1845,14 +1880,18 @@ function renderTimeline(p, pourDate, rec){
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
-    cb.checked = !!tickOf(rec, stage.key);
+    // As of the reference date: a task ticked AFTER that date shows as not done (and is locked,
+    // because its real tick is untouched -- set the reference date to today to change it).
+    const tickedAsOf = tickAsOf(p, rec, stage.key);
+    cb.checked = tickedAsOf;
+    if(tickOf(rec, stage.key) && !tickedAsOf){ cb.disabled = true; cb.title = 'Ticked after the reference date'; }
 
     const textWrap = document.createElement('div');
     const lbl = document.createElement('div');
     lbl.className = 'label';
     lbl.textContent = stage.label;
     const dt = document.createElement('div');
-    const isOverdue = !tickOf(rec, stage.key) && refDate > d;
+    const isOverdue = !tickedAsOf && refDate > d;
     dt.className = 'date' + (isOverdue ? ' overdue' : '');
     dt.textContent = fmtDDMM(d) + '/' + pourDate.getFullYear() + (isOverdue ? '  (overdue)' : '');
 
@@ -1870,6 +1909,7 @@ function renderTimeline(p, pourDate, rec){
         const diff = Math.round((dd.getTime() - d.getTime()) / 86400000);
         doneLine.style.display = 'flex';
         doneLine.appendChild(mk('span', '\u2714 Done ' + fmtDDMMYYYY(dd) + (parseISO(iso) ? '' : ' (plan date)')));
+        if(dd.getTime() > refDate.getTime()) doneLine.appendChild(mk('span', 'after the reference date', 'prev'));
         doneLine.appendChild(mk('span',
           diff === 0 ? 'on plan' : (diff > 0 ? diff + ' day' + (diff > 1 ? 's' : '') + ' late' : (-diff) + ' day' + (diff < -1 ? 's' : '') + ' early'),
           'delta' + (diff > 0 ? ' late' : '')));
@@ -1877,11 +1917,11 @@ function renderTimeline(p, pourDate, rec){
         eb.addEventListener('click', () => {
           const open = () => {
             doneLine.innerHTML = '';
-            const inp = document.createElement('input'); inp.type = 'date'; inp.value = isoOf(dd);
+            const inp = document.createElement('input'); inp.type = 'date'; inp.value = isoOf(dd); inp.max = isoOf(realToday());
             const ok = mk('button', 'Save'); ok.type = 'button';
             const no = mk('button', 'Cancel'); no.type = 'button';
             ok.addEventListener('click', () => {
-              if(!parseISO(inp.value)) return;
+              if(!parseISO(inp.value) || inp.value > isoOf(realToday())) return;
               const r2 = store[p.num] || (store[p.num] = {});
               if(!r2._d) r2._d = {};
               r2._d[stage.key] = inp.value;
@@ -1917,11 +1957,12 @@ function renderTimeline(p, pourDate, rec){
           const due = dueDateOf(p, pourDate, s);
           const was = tickOf(rcp, s.key);
           // newly completed by the auto-complete: planned date, but never in the future
-          stampDone(rcp, s.key, was || s === stage ? (s === stage ? tdy : due) : (due < tdy ? due : tdy), s === stage && choice === 'today');
+          stampDone(rcp, s.key, s === stage ? tdy : (due < tdy ? due : tdy), s === stage && choice === 'today');
           rcp[s.key] = true;
         });
         store[p.num]._v9 = true;
         saveStore(store);
+        syncRefToToday();
         refreshPanelVisual(p.num);
         updateTotal();
         renderTimeline(p, pourDate, store[p.num]);
@@ -1933,6 +1974,7 @@ function renderTimeline(p, pourDate, rec){
       if(cb.checked) stampDone(store[p.num], stage.key, realToday(), choice === 'today');
       else parkDone(store[p.num], stage.key);
       saveStore(store);
+      if(cb.checked && syncRefToToday()){ renderTimeline(p, pourDate, store[p.num]); return; }
       refreshPanelVisual(p.num);
       updateTotal();
       const stillOverdue = !cb.checked && refDate > d;
@@ -2102,7 +2144,7 @@ function rptCompute(){
   const rows = panels.filter(p => p.area != null).map(p => {
     const rec = store[p.num] || {};
     const pi = rptIdx(effectivePourDate(p));
-    const poured = !!rec[pourKey];
+    const poured = tickAsOf(p, rec, pourKey);
     return {p, area:p.area, planIdx:pi, poured, actIdx: poured ? Math.min(pi, todayIdx) : null};
   });
   const total = rows.reduce((a,r) => a + r.area, 0);
@@ -2432,6 +2474,7 @@ function renderCalendar(){
       updateDateBtn();
       document.getElementById('calPop').classList.remove('open');
       renderPlan();
+      updateTotal();
     }
   );
 }
@@ -2457,7 +2500,7 @@ document.getElementById('calToday').addEventListener('click', (e) => {
   e.stopPropagation();
   refDate = new Date(); refDate.setHours(0,0,0,0);
   calViewYear = refDate.getFullYear(); calViewMonth = refDate.getMonth();
-  updateDateBtn(); renderCalendar(); renderPlan();
+  updateDateBtn(); renderCalendar(); renderPlan(); updateTotal();
 });
 document.addEventListener('click', (e) => {
   const pop = document.getElementById('calPop');
