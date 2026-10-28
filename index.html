@@ -513,6 +513,14 @@
   .rpt-tbl th.l, .rpt-tbl td.l{ text-align:left; }
   .rpt-tbl td{ padding:8px 10px; text-align:right; border-bottom:1px solid var(--r-line); white-space:nowrap; }
   .rpt-tbl tr.cur td{ background:rgba(245,224,122,.35); font-weight:700; }
+  .rpt-tbl tbody tr{ cursor:pointer; }
+  .rpt-tbl tbody tr:hover td{ background:#eaf2fb; }
+  .rpt-tbl tbody tr.cur:hover td{ background:rgba(245,224,122,.6); }
+  .rpt-tbl tbody tr:focus-visible{ outline:2px solid var(--r-navy); outline-offset:-2px; }
+  .rpt-tbl tbody tr.sel td{ background:#dbe9fb; box-shadow:inset 0 2px 0 #2f6fd0, inset 0 -2px 0 #2f6fd0; }
+  .rpt-tbl tbody tr.sel td:first-child{ box-shadow:inset 0 2px 0 #2f6fd0, inset 0 -2px 0 #2f6fd0, inset 3px 0 0 #2f6fd0; }
+  .rpt-tbl tbody tr.sel td:last-child{ box-shadow:inset 0 2px 0 #2f6fd0, inset 0 -2px 0 #2f6fd0, inset -3px 0 0 #2f6fd0; }
+  .rpt-wk-title small{ font-weight:500; text-transform:none; letter-spacing:0; color:var(--r-muted); margin-left:6px; }
   .rpt-tbl tr.fut td{ color:#8a97a6; }
   .rpt-tbl td.pos{ color:var(--r-act2); font-weight:700; } .rpt-tbl td.neg{ color:var(--r-plan); font-weight:700; }
   .rpt-tbl .now{ display:inline-block; font-size:10.5px; background:var(--r-navy); color:#f5e07a; padding:1px 7px; border-radius:10px; margin-left:6px; vertical-align:middle; }
@@ -962,11 +970,11 @@
         </div>
       </div>
       <section class="rpt-card">
-        <h3>Weekly schedule &amp; progress <span class="h3-note">sq.m.</span></h3>
+        <h3>Weekly schedule &amp; progress <span class="h3-note">Click a week to list its panels &middot; sq.m.</span></h3>
         <div class="rpt-tbl-wrap"><table class="rpt-tbl" id="rptTable"></table></div>
       </section>
       <div class="rpt-two">
-        <section class="rpt-card"><h3>Panels planned this week</h3><div class="rpt-chips" id="rptWeekPanels"></div></section>
+        <section class="rpt-card"><h3 id="rptWeekTitle">Panels planned this week</h3><div class="rpt-chips" id="rptWeekPanels"></div></section>
         <section class="rpt-card"><h3>Overdue &mdash; not yet poured</h3><div class="rpt-chips" id="rptLate"></div></section>
       </div>
       <div class="rpt-foot" id="rptFoot"></div>
@@ -2120,6 +2128,7 @@ const RPT_START = new Date(2026, 9, 5);
 const RPT_WEEKS = 9;
 const RPT_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let reportOpen = false;
+let rptSelWeek = null;   // week number picked by clicking a table row (null = current week)
 
 function rptIdx(date){ return Math.round((new Date(date.getFullYear(),date.getMonth(),date.getDate()) - RPT_START) / 86400000); }
 function rptDate(i){ return new Date(RPT_START.getFullYear(), RPT_START.getMonth(), RPT_START.getDate() + i); }
@@ -2356,6 +2365,7 @@ function renderReport(){
   host.innerHTML = rptChartSvg(D, host);
 
   // table
+  const selK = rptSelWeek && rptSelWeek >= 1 && rptSelWeek <= RPT_WEEKS ? rptSelWeek : null;
   let t = '<thead><tr><th class="l">Week</th><th class="l">Period</th><th>Plan this week</th><th>Plan cumulative</th><th>Actual cumulative</th><th>Variance</th><th class="l">Done</th></tr></thead><tbody>';
   D.weeks.forEach(w => {
     const cls = w.status === 'cur' ? 'cur' : w.status === 'fut' ? 'fut' : '';
@@ -2368,7 +2378,7 @@ function renderReport(){
       vr = rSign2(dv); vcls = dv > vTol ? 'pos' : dv < -vTol ? 'neg' : '';
       bar = (D.total > 0 ? w.actCum / D.total * 100 : 0);
     }
-    t += '<tr class="' + cls + '"><td class="l">W' + w.k + (w.status === 'cur' ? '<span class="now">NOW</span>' : '') + '</td>' +
+    t += '<tr class="' + cls + (w.k === selK ? ' sel' : '') + '" data-wk="' + w.k + '" tabindex="0" aria-selected="' + (w.k === selK) + '" title="Show panels planned in W' + w.k + '"><td class="l">W' + w.k + (w.status === 'cur' ? '<span class="now">NOW</span>' : '') + '</td>' +
          '<td class="l">' + rptRange(w.a, w.b) + '</td>' +
          '<td>' + rN2(planCum - w.planPrev) + '</td><td>' + rN2(planCum) + '</td><td>' + act + '</td><td class="' + vcls + '">' + vr + '</td>' +
          '<td class="l">' + (bar === '' ? '—' : bar.toFixed(1) + '%<span class="pbar"><i style="width:' + Math.min(100, bar) + '%"></i></span>') + '</td></tr>';
@@ -2378,10 +2388,15 @@ function renderReport(){
 
   // panel chips
   const tag = r => '<b>#' + (getRank(r.p.num) != null ? getRank(r.p.num) : r.p.num) + '</b> &middot; ' + rptDM(r.planIdx) + ' &middot; ' + rN0(r.area) + ' sq.m.';
-  const weekRows = D.rows.filter(r => r.planIdx >= D.cur.a && r.planIdx <= D.cur.b).sort((a, b) => a.planIdx - b.planIdx);
+  const shownWk = selK ? D.weeks[selK - 1] : D.cur;
+  const isCurWk = !selK || (selK === D.cw && !D.before && !D.after);
+  document.getElementById('rptWeekTitle').innerHTML = isCurWk
+    ? 'Panels planned this week'
+    : 'Panels planned in W' + shownWk.k + '<small>' + rptRange(shownWk.a, shownWk.b) + '</small>';
+  const weekRows = D.rows.filter(r => r.planIdx >= shownWk.a && r.planIdx <= shownWk.b).sort((a, b) => a.planIdx - b.planIdx);
   document.getElementById('rptWeekPanels').innerHTML = weekRows.length
     ? weekRows.map(r => '<span class="rpt-pc ' + (r.poured ? 'ok' : '') + '">' + (r.poured ? '&#10003; ' : '') + tag(r) + '</span>').join('')
-    : '<span class="rpt-empty">No panels are scheduled to pour in this week.</span>';
+    : '<span class="rpt-empty">No panels are scheduled to pour in ' + (isCurWk ? 'this week' : 'W' + shownWk.k) + '.</span>';
   const lateRows = D.rows.filter(r => !r.poured && r.planIdx < D.todayIdx).sort((a, b) => a.planIdx - b.planIdx);
   document.getElementById('rptLate').innerHTML = lateRows.length
     ? lateRows.map(r => '<span class="rpt-pc late">' + tag(r) + '</span>').join('')
@@ -2391,7 +2406,14 @@ function renderReport(){
     'Weeks run Monday to Sunday (progress cut-off on Sunday): week 1 = ' + rptRange(0, 6) + ', week ' + RPT_WEEKS + ' = ' + rptRange(7 * RPT_WEEKS - 7, D.lastIdx) + ' ' + RPT_START.getFullYear() + '. Areas in sq.m.';
 }
 
+function rptPickWeek(tr){
+  if(!tr || !tr.dataset.wk) return;
+  const k = +tr.dataset.wk;
+  rptSelWeek = (rptSelWeek === k) ? null : k;   // click the same row again to go back to the current week
+  renderReport();
+}
 function openReport(){
+  rptSelWeek = null;
   document.getElementById('reportOverlay').classList.add('open');
   reportOpen = true;
   renderReport();
@@ -2408,6 +2430,9 @@ function refreshReportIfOpen(){ if(reportOpen) renderReport(); }
   const box = document.getElementById('progressTotal');
   box.addEventListener('click', openReport);
   box.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openReport(); } });
+  const tb = document.getElementById('rptTable');
+  tb.addEventListener('click', e => rptPickWeek(e.target.closest('tbody tr')));
+  tb.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ const tr = e.target.closest('tbody tr'); if(tr){ e.preventDefault(); rptPickWeek(tr); const k = tr.dataset.wk; const n = tb.querySelector('tr[data-wk="' + k + '"]'); if(n) n.focus(); } } });
   document.getElementById('rptClose').addEventListener('click', closeReport);
   document.getElementById('reportOverlay').addEventListener('click', e => { if(e.target.id === 'reportOverlay') closeReport(); });
   document.getElementById('rptPrint').addEventListener('click', () => window.print());
