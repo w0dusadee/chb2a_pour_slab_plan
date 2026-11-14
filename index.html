@@ -911,16 +911,29 @@
   body.tab-arch{height:100vh;overflow:hidden}
   body.tab-arch header, body.tab-arch .stage, body.tab-arch .symbols-bar, body.tab-arch .print-foot{display:none !important}
   body.tab-arch .arch-host{display:flex}
-  html.offline .apptabs, html.offline .arch-host{display:none !important}
-  @media (max-width:600px){ .apptabs .at-brand{display:none} .apptabs{padding:5px 8px 0} .apptabs .at-tab{padding:7px 11px;font-size:12px} }
-  @media print{ .apptabs, .arch-host{display:none !important} }
+  .pol-host{display:none;flex:1 1 auto;min-height:0;position:relative;background:var(--navy)}
+  .pol-host iframe{flex:1 1 auto;width:100%;min-height:0;border:0;background:#f7f3f5;display:block}
+  .pol-host .arch-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8ea9db;font:500 13px 'IBM Plex Mono',monospace;pointer-events:none}
+  .pol-host .arch-loading[hidden]{display:none}
+  body.tab-pol{height:100vh;overflow:hidden}
+  body.tab-pol header, body.tab-pol .stage, body.tab-pol .symbols-bar, body.tab-pol .print-foot, body.tab-pol .zoom-controls{display:none !important}
+  body.tab-pol .pol-host{display:flex}
+  .apptabs .at-ext{display:none;margin-left:auto;align-self:center;margin-bottom:5px;font:600 11.5px 'IBM Plex Mono',monospace;color:#8ea9db;text-decoration:none;white-space:nowrap}
+  .apptabs .at-ext:hover{color:#f5e07a}
+  body.tab-pol .apptabs .at-ext{display:inline}
+  html.offline .apptabs, html.offline .arch-host, html.offline .pol-host{display:none !important}
+  @media (max-width:600px){ .apptabs .lw, .apptabs .at-ext{display:none !important} .apptabs .at-brand{display:none} .apptabs{padding:5px 8px 0} .apptabs .at-tab{padding:7px 11px;font-size:12px} }
+  @media (max-width:420px){ .apptabs{gap:2px;padding:5px 6px 0} .apptabs .at-tab{padding:7px 7px;font-size:11.5px} }
+  @media print{ .apptabs, .arch-host, .pol-host{display:none !important} }
 </style>
 </head>
 <body>
 <nav class="apptabs" id="appTabs" role="tablist" aria-label="Work area">
   <span class="at-brand">CHB2A · Dolphin</span>
   <button class="at-tab on" id="tabPour" type="button" role="tab" aria-selected="true" data-tab="pour">🧱 Floor pour</button>
-  <button class="at-tab" id="tabArch" type="button" role="tab" aria-selected="false" data-tab="arch">🏛 Architectural works</button>
+  <button class="at-tab" id="tabArch" type="button" role="tab" aria-selected="false" data-tab="arch">🏛 Architectural<span class="lw"> works</span></button>
+  <button class="at-tab" id="tabPol" type="button" role="tab" aria-selected="false" data-tab="pol">✨ <span class="lw">Floor </span>polishing</button>
+  <a class="at-ext" id="polExt" href="https://wichittra-14.github.io/Floor-Polishing/" target="_blank" rel="noopener" title="Open the Floor Polishing site in its own window">Open polishing site in new window ↗</a>
 </nav>
 
 <header>
@@ -1000,6 +1013,11 @@
 <div class="arch-host" id="archHost">
   <iframe id="archFrame" title="Architectural works plan"></iframe>
   <div class="arch-loading" id="archLoading" hidden>Loading architectural plan…</div>
+</div>
+
+<div class="pol-host" id="polHost">
+  <iframe id="polFrame" title="Floor polishing schedule"></iframe>
+  <div class="arch-loading" id="polLoading" hidden>Loading floor polishing schedule…</div>
 </div>
 
 <div class="zoom-controls" role="group" aria-label="Plan zoom controls">
@@ -2875,7 +2893,7 @@ function getFitWidthPx(){
 }
 
 function applyZoom(){
-  if(appTab === 'arch') return;
+  if(appTab === 'arch' || appTab === 'pol') return;
   const wrap = document.getElementById('planWrap');
   wrap.style.maxWidth = 'none';
   wrap.style.width = Math.round(getFitWidthPx() * zoomFactor) + 'px';
@@ -2894,6 +2912,7 @@ function setZoomLabel(){
   label.textContent = Math.round(z * 100) + '%';
 }
 function zoomStep(dir){
+  if(appTab === 'pol') return;
   if(appTab === 'arch'){
     const w = archWin();
     try{ if(w && typeof w.Z === 'function') w.Z(dir ? dir * ZOOM_STEP : 0); }catch(e){}
@@ -3130,7 +3149,9 @@ function buildOfflineHtml(){
   ['timeline','editCalGrid','calGrid'].forEach(id => { const el = clone.querySelector('#' + id); if(el) el.innerHTML = ''; });
   clone.querySelectorAll('.open').forEach(el => el.classList.remove('open'));
   clone.classList.remove('offline');
-  const cb = clone.querySelector('body'); if(cb){ cb.classList.remove('wk-mode'); cb.classList.remove('tab-arch'); }
+  const cb = clone.querySelector('body'); if(cb){ cb.classList.remove('wk-mode'); cb.classList.remove('tab-arch'); cb.classList.remove('tab-pol'); }
+  const pf = clone.querySelector('#polFrame'); if(pf) pf.removeAttribute('src');
+  const pl = clone.querySelector('#polLoading'); if(pl) pl.hidden = true;
   const af = clone.querySelector('#archFrame'); if(af) af.removeAttribute('src');
   const al = clone.querySelector('#archLoading'); if(al) al.hidden = true;
   clone.querySelectorAll('#appTabs .at-tab').forEach(b => { const on = b.dataset.tab === 'pour'; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
@@ -3330,19 +3351,30 @@ function loadArch(){
     const w = archWin(); try{ if(w && typeof w.rf === 'function') w.rf(); }catch(e){}
   }
 }
+const POL_URL = 'https://wichittra-14.github.io/Floor-Polishing/';
+function loadPol(){
+  const f = document.getElementById('polFrame');
+  if(!f.getAttribute('src')){
+    const ld = document.getElementById('polLoading'); ld.hidden = false;
+    f.addEventListener('load', () => { ld.hidden = true; }, {once:true});
+    f.src = POL_URL + '?embed=1';
+  }
+}
 function switchTab(t){
-  t = (t === 'arch') ? 'arch' : 'pour';
+  t = (t === 'arch' || t === 'pol') ? t : 'pour';
   appTab = t;
   document.body.classList.toggle('tab-arch', t === 'arch');
+  document.body.classList.toggle('tab-pol', t === 'pol');
   document.querySelectorAll('#appTabs .at-tab').forEach(b => {
     const on = b.dataset.tab === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
   });
-  if(t === 'arch') loadArch(); else applyZoom();
+  if(t === 'arch') loadArch(); else if(t === 'pol') loadPol(); else applyZoom();
   setZoomLabel();
-  try{ history.replaceState(null, '', t === 'arch' ? '#arch' : location.pathname + location.search); }catch(e){}
+  try{ history.replaceState(null, '', t === 'arch' ? '#arch' : t === 'pol' ? '#polishing' : location.pathname + location.search); }catch(e){}
 }
 document.querySelectorAll('#appTabs .at-tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 if(!OFFLINE && location.hash === '#arch') switchTab('arch');
+else if(!OFFLINE && location.hash === '#polishing') switchTab('pol');
 
 </script>
 
